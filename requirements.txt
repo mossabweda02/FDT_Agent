@@ -1,0 +1,7 @@
+azure-ai-projects
+azure-identity
+pyodbc
+pandas
+sqlalchemy
+python-dotenv
+pydantic-settings
