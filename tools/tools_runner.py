@@ -1,3 +1,9 @@
+"""
+fdtAgent/tools/tools_runner.py
+================================
+Dispatch des appels tools GPT → fonctions Python.
+"""
+
 from tools.functions_tools import (
     list_tables,
     describe_table,
@@ -7,11 +13,11 @@ from tools.functions_tools import (
 )
 
 FUNCTIONS = {
-    "list_tables":           list_tables,
-    "describe_table":        describe_table,
-    "get_sample_data":       get_sample_data,
+    "list_tables":             list_tables,
+    "describe_table":          describe_table,
+    "get_sample_data":         get_sample_data,
     "get_table_relationships": get_table_relationships,
-    "execute_query":         execute_query,
+    "execute_query":           execute_query,
 }
 
 
