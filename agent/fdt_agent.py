@@ -1,9 +1,3 @@
-"""
-fdtAgent/agent/fdt_agent.py
-============================
-Compatible avec azure-ai-agents==1.2.0b5 et azure-ai-projects==2.0.0b4
-"""
-
 import asyncio
 import json
 import os
