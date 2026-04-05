@@ -123,14 +123,50 @@ FDT_Agent/
 ├── tools/
 │   ├── functions_tools.py   # SQL query tools (list_tables, execute_query, etc.)
 │   └── tools_runner.py      # Tool dispatcher & executor
+├── update_agent.py          # Agent update utility script
 ├── requirements.txt         # Python dependencies
 ├── test_data.py            # Database connection tester
-└── README.md               # This file
+├── README.md               # This file (English)
+└── README.fr.md            # French documentation
 ```
 
 ---
 
-## 🛠️ Development
+## � Agent Updates
+
+### Automatic Agent Synchronization
+
+When you modify the agent's behavior by changing:
+
+- **`core/prompts.py`** - System instructions and domain knowledge
+- **`tools/functions_tools.py`** - Available tools and functions
+
+You need to update the agent in Azure Foundry to reflect these changes:
+
+#### Quick Update (Recommended)
+```bash
+python update_agent.py
+```
+
+#### Manual Update
+```bash
+python agent/create_agent.py update
+```
+
+#### What Gets Updated
+- **Instructions**: Latest system prompt from `core/prompts.py`
+- **Tools**: Latest tool definitions from the code
+- **Agent ID**: Uses `AGENT_ID` from your `.env` file
+
+#### When to Update
+- ✅ After modifying prompts or system instructions
+- ✅ After adding/removing/changing tools
+- ✅ After updating domain knowledge or schemas
+- ❌ Not needed for code refactoring (unless it affects tool definitions)
+
+---
+
+## �🛠️ Development
 
 ### Setup Development Environment
 
@@ -193,6 +229,18 @@ copy .env.example .env             # Create config
 ```bash
 python test_data.py                # Test connection
 python agent/fdt_agent.py          # Run agent
+python update_agent.py             # Update agent after code changes
+```
+
+### Update Agent After Changes
+When you modify `core/prompts.py` or `tools/functions_tools.py`, update the agent in Azure Foundry:
+
+```bash
+# Quick update
+python update_agent.py
+
+# Or use the create_agent script
+python agent/create_agent.py update
 ```
 
 ### Code Example

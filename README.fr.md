@@ -123,14 +123,50 @@ FDT_Agent/
 ├── tools/
 │   ├── functions_tools.py   # Outils de requêtes SQL (list_tables, execute_query, etc.)
 │   └── tools_runner.py      # Dispatcher et exécuteur d'outils
+├── update_agent.py          # Script utilitaire de mise à jour de l'agent
 ├── requirements.txt         # Dépendances Python
 ├── test_data.py            # Testeur de connexion base de données
-└── README.md               # Ce fichier
+├── README.md               # Documentation anglaise
+└── README.fr.md            # Ce fichier (Français)
 ```
 
 ---
 
-## 🛠️ Développement
+## � Mises à Jour de l'Agent
+
+### Synchronisation Automatique de l'Agent
+
+Quand vous modifiez le comportement de l'agent en changeant :
+
+- **`core/prompts.py`** - Instructions système et connaissances métier
+- **`tools/functions_tools.py`** - Outils et fonctions disponibles
+
+Vous devez mettre à jour l'agent dans Azure Foundry pour refléter ces changements :
+
+#### Mise à Jour Rapide (Recommandée)
+```bash
+python update_agent.py
+```
+
+#### Mise à Jour Manuelle
+```bash
+python agent/create_agent.py update
+```
+
+#### Ce qui est Mis à Jour
+- **Instructions** : Derniers prompts système depuis `core/prompts.py`
+- **Outils** : Dernières définitions d'outils depuis le code
+- **ID Agent** : Utilise `AGENT_ID` depuis votre fichier `.env`
+
+#### Quand Mettre à Jour
+- ✅ Après modification des prompts ou instructions système
+- ✅ Après ajout/suppression/modification d'outils
+- ✅ Après mise à jour des connaissances métier ou schémas
+- ❌ Pas nécessaire pour la refactorisation de code (sauf si cela affecte les définitions d'outils)
+
+---
+
+## �🛠️ Développement
 
 ### Configuration Environnement Développement
 
@@ -193,6 +229,18 @@ copy .env.example .env             # Créer config
 ```bash
 python test_data.py                # Tester connexion
 python agent/fdt_agent.py          # Lancer agent
+python update_agent.py             # Mettre à jour l'agent après modifications
+```
+
+### Mettre à Jour l'Agent Après Modifications
+Quand vous modifiez `core/prompts.py` ou `tools/functions_tools.py`, mettez à jour l'agent dans Azure Foundry :
+
+```bash
+# Mise à jour rapide
+python update_agent.py
+
+# Ou utiliser le script create_agent
+python agent/create_agent.py update
 ```
 
 ### Exemple Code
