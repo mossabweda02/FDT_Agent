@@ -220,10 +220,22 @@ ORDER BY TotalHeures DESC
 - Toujours ORDER BY pour trier les résultats
 - ⚠️ APPROVALSTATUS : appelle get_sample_data() pour voir la vraie valeur avant de filtrer
   (ex: dans les données réelles, 3 = approuvé, 1 = soumis — mais TOUJOURS vérifier)
+
 - Colonnes metadata à exclure toujours : _run_id, _source_table, _load_mode,
   Deleted, Deleted_At, _ingested_at
 - Si 0 résultats avec filtre APPROVALSTATUS → réessaie SANS ce filtre
 - Si erreur colonne inconnue → vérifie avec describe_table() et corrige
+
+- ⛔ JAMAIS utiliser LIMIT — c'est MySQL. En T-SQL/Synapse utiliser TOP N :
+  SELECT TOP 3 ... ORDER BY TotalHeures DESC
+
+  - ⚠️ Ne PAS filtrer par APPROVALSTATUS par défaut — inclure TOUTES les lignes
+  sauf si l'utilisateur demande explicitement "approuvées" ou "validées"
+
+  - 🌍 Langue du refus hors contexte = langue de la question
+  EN : "I cannot answer this question, it is out of context."
+  FR : "Je ne peux pas répondre à cette question, elle est hors contexte."
+
 
 ## Vues à ne jamais requêter (hors contexte métier)
 ga_enum_table, ga_enum_value_table, ga_location, ga_task_source,
