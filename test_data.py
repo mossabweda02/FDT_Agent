@@ -101,3 +101,20 @@ for table in TABLES_TO_EXPLORE:
 
     except Exception as e:
         print(f"\n[{table}] → Introuvable ou erreur : {e}")
+
+# ─────────────────────────────────────────
+# 1. Partie de test des reponses de l'agent FDT par rapport à la base de données
+# ─────────────────────────────────────────
+
+QUERY = """
+SELECT COUNT(*) AS total_timesheets
+FROM timesheet_header;
+
+"""
+
+df = pd.read_sql(QUERY, engine)
+
+print("\n==============================")
+print("Reponse attendue")
+print("==============================")
+print(df.to_string(index=False))
