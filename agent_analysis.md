@@ -511,28 +511,6 @@ Après : SELECT TOP 1 ... ORDER BY ...
 | **Taux d'erreur SQL** | <5% | 8% | ⚙️ En cours |
 | **Requêtes réussies 1er coup** | ≥90% | 85% | ⚠️ Proche |
 
-### Métriques Techniques
-
-```
-┌──────────────────────────────────────────────────┐
-│          MÉTRIQUES TECHNIQUES v2.0               │
-├──────────────────────────────────────────────────┤
-│                                                  │
-│  Lignes de code                                  │
-│  ████████████████  ~2500 lignes                  │
-│                                                  │
-│  Couverture de tests                             │
-│  ████████  0% (à implémenter)                    │
-│                                                  │
-│  Documentation                                   │
-│  ████████████████████  100%                      │
-│                                                  │
-│  Modularité                                      │
-│  ████████████████████  Excellente               │
-│                                                  │
-└──────────────────────────────────────────────────┘
-```
-
 ---
 
 ## 🎓 Leçons Apprises
@@ -549,14 +527,6 @@ Après : SELECT TOP 1 ... ORDER BY ...
 
 1. **Incohérence header vs ligne** : APPROVALSTATUS différent entre les 2 tables
 2. **Cache Python** : Nécessite rechargement forcé des modules dans `update_agent.py`
-
-### Recommandations Futures 💡
-
-1. **Tests automatisés** : Créer une suite pytest complète (tests/test_*.py)
-2. **CI/CD** : Automatiser les tests à chaque commit
-3. **Monitoring** : Logger toutes les requêtes SQL pour analyse
-4. **Feedback loop** : Créer un bouton "👍/👎" pour améliorer les réponses
-5. **A/B Testing** : Tester différentes formulations de règles
 
 
 ### Procédure de Mise à Jour
