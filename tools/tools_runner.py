@@ -1,31 +1,19 @@
 """
-fdtAgent/tools/tools_runner.py
-================================
-Dispatch des appels tools GPT → fonctions Python.
+Dispatcher des tool calls de l'agent Azure AI Foundry.
 """
 
-from tools.functions_tools import (
-    list_tables,
-    describe_table,
-    get_sample_data,
-    get_table_relationships,
-    execute_query,
-)
-
-FUNCTIONS = {
-    "list_tables":             list_tables,
-    "describe_table":          describe_table,
-    "get_sample_data":         get_sample_data,
-    "get_table_relationships": get_table_relationships,
-    "execute_query":           execute_query,
-}
+import json
+from tools.functions_tools import TOOL_FUNCTIONS
 
 
 def run_tool(name: str, arguments: dict) -> str:
-    fn = FUNCTIONS.get(name)
+    fn = TOOL_FUNCTIONS.get(name)
     if fn is None:
-        return f"Tool '{name}' introuvable."
+        return json.dumps({
+            "error": f"Tool '{name}' introuvable.",
+            "available": list(TOOL_FUNCTIONS.keys()),
+        })
     try:
         return fn(**arguments)
     except Exception as e:
-        return f"Erreur lors de l'exécution de '{name}' : {e}"
+        return json.dumps({"error": f"Erreur '{name}' : {e}"})
