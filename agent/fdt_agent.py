@@ -75,6 +75,8 @@ async def ask(question: str) -> str:
                         args = json.loads(tc.function.arguments or "{}")
                         print(f"     [tool] {name}({args})")
                         result = run_tool(name, args)
+                        # Pour aider à debogger les outils, on affiche le résultat dans la console
+                        print(f"[tool result]\n{result}\n")
                         tool_outputs.append({
                             "tool_call_id": tc.id,
                             "output": str(result),
