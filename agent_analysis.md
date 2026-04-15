@@ -3,7 +3,7 @@
 ## 🎯 Vue d'Ensemble
 
 **Nom de l'agent** : **FDT-Agent v1.0**  
-**Ancienne version** : FDT-Agent   
+**Ancienne version** : FDT-Agent v0  
 **Date de mise à jour** : Avril 2026  
 **Score initial** : 38% (5/13 tests réussis)  
 **Score cible** : 85% (11/13 tests réussis)  
@@ -32,7 +32,7 @@
 
 ### Métriques Clés
 
-| Métrique | Avant v2.0 | Après v2.0 | Amélioration |
+| Métrique | Avant v1.0 | Après v1.0 | Amélioration |
 |----------|------------|------------|--------------|
 | **Tests réussis** | 5/13 (38%) | 11/13 (85%) | **+6 tests** |
 | **Précision SQL** | Faible | Élevée | **+124%** |
@@ -136,7 +136,7 @@ Tu réponds en français ou en anglais selon la langue de la question.
 ❌ NE JAMAIS ajouter WHERE APPROVALSTATUS = 3 automatiquement
 ✅ Inclure TOUTES les lignes par défaut (Draft + Submitted + Approved)
 ✅ Filtrer UNIQUEMENT si l'utilisateur dit explicitement :
-   "approuvées" / "validées" → APPROVALSTATUS = 3
+    "approuvées" / "validées" → APPROVALSTATUS = 3
 ```
 
 ---
@@ -188,7 +188,7 @@ BASIC_EXAMPLES = [
         FROM timesheet_header h
         JOIN timesheet_line l ON h.TIMESHEETNBR = l.TIMESHEETNBR
         WHERE MONTH(h.PERIODFROM) = 1
-          AND YEAR(h.PERIODFROM) = 2026
+            AND YEAR(h.PERIODFROM) = 2026
         -- ✅ PAS de filtre APPROVALSTATUS
         """,
         "expected_result": "476 heures (tous statuts)",
@@ -301,7 +301,7 @@ WHERE h.APPROVALSTATUS = 3
 ```sql
 -- ✅ Maintenant l'agent génère
 WHERE MONTH(h.PERIODFROM) = 1
-  AND YEAR(h.PERIODFROM) = 2026
+    AND YEAR(h.PERIODFROM) = 2026
 -- Sans filtre APPROVALSTATUS → 476 heures ✅
 ```
 
@@ -425,7 +425,7 @@ FROM dbo.timesheet_header
 
 ### Matrice de Tests
 
-| # | Test | Catégorie | Avant v2.0 | Après v2.0 | Statut |
+| # | Test | Catégorie | Avant v1.0 | Après v1.0 | Statut |
 |---|------|-----------|------------|------------|--------|
 | 01 | Liste des vues | FACILE | ✅ 1.0 | ✅ 1.0 | ✅ Maintenu |
 | 02 | Heures janvier 2026 | FACILE | ❌ 0.0 | ✅ 1.0 | 🎯 Fixé |
@@ -445,7 +445,7 @@ FROM dbo.timesheet_header
 - ✅ Test réussi (1.0)
 - ⚠️ Test partiel (0.5)
 - ❌ Test échoué (0.0)
-- 🎯 Fixé dans v2.0
+- 🎯 Fixé dans v1.0
 - ⚙️ Amélioration partielle
 - ✅ Maintenu
 
@@ -504,7 +504,7 @@ Après : SELECT TOP 1 ... ORDER BY ...
 
 ### KPIs à Suivre
 
-| KPI | Objectif v2.0 | Actuel | Statut |
+| KPI | Objectif v1.0 | Actuel | Statut |
 |-----|---------------|--------|--------|
 | **Score des tests** | ≥85% | 85% | ✅ Atteint |
 | **Temps de réponse moyen** | <5s | 6s | ⚠️ Proche |
@@ -539,7 +539,7 @@ vi core/prompts/rules_prompt.py
 python check_corrections.py
 
 # 3. Mettre à jour l'agent Azure
-python agent/update_agent.py --version v2.1
+python agent/update_agent.py --version v1.1
 
 # 4. Tester
 python test_agent.py
@@ -549,16 +549,16 @@ python test_agent.py
 
 | Version | Date | Changements | Score |
 |---------|------|-------------|-------|
-| **v1.0** | Mars 2026 | Version initiale monolithique | 38% |
-| **v2.0** | Avril 2026 | Architecture modulaire + few-shot | 85% |
-| **v2.1** | - | (Prévu) Correction tests partiels | 92% |
-| **v3.0** | - | (Prévu) RAG ...| - |
+| **v0** | Mars 2026 | Version initiale monolithique | 38% |
+| **v1.0** | Avril 2026 | Architecture modulaire + few-shot | 85% |
+| **v1.1** | - | (Prévu) Correction tests partiels | 92% |
+| **v2.0** | - | (Prévu) RAG ...| - |
 
 ---
 
 ## 🏆 Conclusion
 
-Le projet **FDT-Agent v2.0** a atteint ses objectifs de performance avec une amélioration de **+47 points** (de 38% à 85%). L'architecture modulaire mise en place facilite grandement les évolutions futures et la maintenance.
+Le projet **FDT-Agent v1.0** a atteint ses objectifs de performance avec une amélioration de **+47 points** (de 38% à 85%). L'architecture modulaire mise en place facilite grandement les évolutions futures et la maintenance.
 
 Les prochaines étapes se concentrent sur :
 
