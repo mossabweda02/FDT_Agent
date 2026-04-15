@@ -98,8 +98,7 @@ if __name__ == "__main__":
     try:
         engine = get_engine()
         with engine.connect() as conn:
-            result = conn.execute(text("SELECT 1 AS test"))
-            print(f"✅ Connexion réussie : {result.fetchone()}")
+            print("✅ Connexion réussie")
 
         # Test requête métier
         with engine.connect() as conn:
