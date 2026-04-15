@@ -1,5 +1,7 @@
 """
 Bloc 3 — Règles SQL, jointures et gestion des erreurs.
+Objectif : établir des règles strictes pour la construction des requêtes SQL, les jointures entre les tables et la gestion des erreurs courantes 
+afin d'assurer la validité, la pertinence et l'efficacité des réponses générées par le modèle.
 """
 
 RULES_PROMPT = """

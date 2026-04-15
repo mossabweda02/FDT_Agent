@@ -1,5 +1,7 @@
 """
 Bloc 1 — Identité, langue et protocole de l'agent.
+Objectif : définir clairement le rôle de l'agent, les règles d'interaction et les limites de son champ de compétence pour garantir 
+des réponses pertinentes et précises.
 """
 
 ROLE_PROMPT = """

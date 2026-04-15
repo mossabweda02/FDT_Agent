@@ -1,11 +1,11 @@
 """
 Exemples few-shot — annotés avec les vraies données.
 
-RÈGLE ABSOLUE dans tous les exemples :
-❌ Jamais APPROVALSTATUS = 3 par défaut
-❌ Jamais LIMIT
-✅ Toujours dbo.table_name
-✅ Toujours TOP N
+Objectif : fournir un apprentissage par l'exemple riche et réaliste pour guider le modèle dans la génération de requêtes SQL correctes et efficaces.
+
+c'est quoi few-shot ? : Le few-shot learning est une technique d'apprentissage automatique où un modèle est entraîné à effectuer une tâche spécifique en lui fournissant 
+seulement quelques exemples d'entrée-sortie. Dans le contexte de la génération de requêtes SQL, le few-shot learning peut aider le modèle à comprendre les structures et les 
+patterns des requêtes correctes en lui montrant quelques exemples annotés avec les vraies données.
 """
 
 from typing import List, Dict
@@ -27,6 +27,7 @@ WHERE MONTH(h.PERIODFROM) = 1
   AND YEAR(h.PERIODFROM) = 2026""",
         "expected_result": "476 heures (tous statuts : Draft + Submitted + Approved)",
     },
+
     {
         "user_question": "Combien d'heures APPROUVÉES en janvier 2026 ?",
         "reasoning": (
@@ -42,6 +43,7 @@ WHERE h.APPROVALSTATUS = 3
   AND YEAR(h.PERIODFROM) = 2026""",
         "expected_result": "70 heures (uniquement approuvées)",
     },
+
     {
         "user_question": "Liste des projets actifs",
         "reasoning": (
@@ -76,6 +78,7 @@ GROUP BY r.NAME
 ORDER BY TotalHeures DESC""",
         "expected_result": "Émilie Gagnon 350h, Oumaima Chmissi 98h, Jason Li 28h",
     },
+
     {
         "user_question": "TOP 3 projets par heures en 2026",
         "reasoning": (
@@ -94,6 +97,7 @@ GROUP BY p.PROJID, p.PROJNAME
 ORDER BY TotalHeures DESC""",
         "expected_result": "PRJ-00329 (1540h), PRJ-00022 (924h), PRJ-00407 (518h)",
     },
+
     {
         "user_question": "What are the top 3 projects by hours worked in 2026?",
         "reasoning": (
@@ -133,6 +137,7 @@ GROUP BY r.NAME, p.PROJNAME
 ORDER BY r.NAME, TotalHeures DESC""",
         "expected_result": "Matrice employé × projet avec heures",
     },
+
     {
         "user_question": "Quelles tâches ont été effectuées sur le projet PRJ-00329 ?",
         "reasoning": (
@@ -150,6 +155,7 @@ GROUP BY t.ACTIVITYNUMBER, t.TASKNAME, l.CATEGORYID
 ORDER BY TotalHeures DESC""",
         "expected_result": "Tâches PRJ-00329 avec heures par catégorie",
     },
+
     {
         "user_question": "Quels sont les projets les plus rentables ?",
         "reasoning": (
@@ -213,12 +219,14 @@ ORDER BY TotalHeures DESC""",
     },
 ]
 
-
+# ── Fonctions d'accès aux exemples ───────────────────────────────────────
+# Cet fonction permette de récupérer les exemples d'entraînement pour les intégrer dans le prompt de formation du modèle.
 def get_all_examples() -> List[Dict]:
     return (BASIC_EXAMPLES + INTERMEDIATE_EXAMPLES
             + ADVANCED_EXAMPLES + ERROR_CORRECTION_EXAMPLES)
 
-
+# ── Fonction de formatage pour le prompt ───────────────────────────────────────
+# Cette fonction convertit la liste d'exemples en une chaîne de caractères formatée pour être utilisée dans le prompt d'entraînement du modèle.
 def format_examples_for_prompt() -> str:
     examples = get_all_examples()
     out = "## Exemples SQL — Few-Shot Learning\n\n"
@@ -246,6 +254,7 @@ def format_examples_for_prompt() -> str:
 
     return out
 
+# ── Test d'affichage des exemples ───────────────────────────────────────
 if __name__ == "__main__":
     all_ex = get_all_examples()
     print(f"Total : {len(all_ex)} exemples")

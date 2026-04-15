@@ -1,13 +1,21 @@
 """
 core/exceptions.py
 ===================
-Exceptions personnalisées du projet FDT Agent.
+Objectif : définir toutes les exceptions personnalisées utilisées dans le projet.
 
 Utilisation actuelle  : aucune (placeholder)
 Utilisation future    :
   - Phase RAG         : SchemaNotFoundException, EmbeddingError
   - Phase multi-agent : AgentTimeoutError, ToolCallLimitError
   - Phase prod        : DatabaseConnectionError, QueryBudgetExceeded
+
+  Pourquoi les exceptions ne sont actuellement pas utilisées ?
+  - Nous sommes encore en phase de développement rapide (MVP), et la priorité est de construire les fonctionnalités de base et d'entraînement du modèle.
+  - La gestion d'exceptions spécifiques sera ajoutée progressivement à mesure que nous intégrons les différentes composantes (agent, outils, base de données) et que nous 
+  identifions les points de défaillance potentiels.
+  - Nous voulons éviter de complexifier le code avec des exceptions personnalisées avant d'avoir une vision claire des erreurs qui peuvent survenir dans chaque composante.
+  - Une fois que nous aurons une base solide et que nous commencerons à intégrer les différentes parties, nous pourrons ajouter des exceptions spécifiques pour améliorer 
+  la robustesse et la maintenabilité du code.
 """
 
 
