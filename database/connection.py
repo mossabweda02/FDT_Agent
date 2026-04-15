@@ -1,10 +1,18 @@
 """
 database/connection.py
 =======================
-Connexion Azure Synapse via DefaultAzureCredential.
-
-Authentification MFA-compatible — token mis en cache par az login.
+Connexion Azure Synapse via DefaultAzureCredential (MFA-compatible, token mis en cache par az login).
 Aucune saisie de mot de passe après le premier az login.
+
+ActiveDirectoryPassword vs DefaultAzureCredential :
+- ActiveDirectoryPassword : nécessite de fournir un mot de passe en clair, pas idéal pour la sécurité et incompatible avec MFA.
+- DefaultAzureCredential : essaie plusieurs méthodes d'authentification, y compris Azure CLI (az login), Managed Identity, et plus. 
+
+Note : 
+* Cette methode est faisable juste pour le dev local.
+* Pour la prod (Déploiement sur Azure (App Service, VM, Function…)): on devra utiliser une Managed Identity ou un Service Principal avec certificat pour éviter les 
+tokens expirés et les problèmes de connexion.
+
 """
 
 import os
@@ -49,17 +57,11 @@ def get_engine():
     """
     Crée un Engine SQLAlchemy pour Azure Synapse.
 
-    Authentification :
-        DefaultAzureCredential essaie dans l'ordre :
-        1. Variables d'environnement  (AZURE_CLIENT_ID etc.)
-        2. Managed Identity           (si déployé sur Azure)
-        3. Azure CLI                  (az login) ← utilisé en local
-        4. Azure PowerShell
-        5. Interactive browser
+  
 
     Pool :
         NullPool car les tokens expirent — chaque connexion obtient
-        un token frais. Pas de connexions persistantes stale.
+        un token frais.
     """
     odbc = (
         "Driver={ODBC Driver 18 for SQL Server};"
