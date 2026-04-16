@@ -40,9 +40,18 @@ Ajouter une section "Derniers Prompts" (Latest) en Français :
 Après chaque prompt utilisateur, afficher 3 suggestions de questions en lien avec le contexte :
 - **Pertinence** : Les suggestions doivent être pertinentes par rapport à la dernière interaction de l'utilisateur.
 - **Source d'inspiration** : S'inspirer du fichier `training_examples.py` pour la génération de ces suggestions.
-- **Implémentation** : La génération de ces suggestions devrait idéalement être gérée côté **backend** pour des raisons de performance, de logique métier et d'accès aux données contextuelles de l'agent. Le frontend se contenterait d'afficher les suggestions reçues du backend.
+- **Implémentation Frontend** : Le frontend se contentera d'afficher les suggestions reçues du backend sous forme de boutons cliquables.
 
-## 7. Design et Esthétique
+## 7. Spécifications Backend pour les Suggestions Contextuelles
+Pour la génération des suggestions contextuelles, le backend doit implémenter la logique suivante :
+- **Endpoint API** : Créer un endpoint API (ex: `/api/suggest_questions`) qui accepte le dernier prompt de l'utilisateur en entrée (format JSON).
+- **Analyse Contextuelle** : À la réception d'un prompt utilisateur, le backend doit analyser son contenu pour en extraire le thème principal ou les entités clés.
+- **Recherche d'Exemples** : Utiliser le fichier `training_examples.py` comme base de connaissances. Parcourir les exemples (`BASIC_EXAMPLES`, `INTERMEDIATE_EXAMPLES`, `ADVANCED_EXAMPLES`) pour trouver des `user_question` ayant un contexte similaire au prompt actuel.
+- **Génération de Suggestions** : Sélectionner 3 questions pertinentes et variées issues de `training_examples.py` ou générer des variantes si nécessaire, en s'assurant qu'elles sont grammaticalement correctes et qu'elles offrent des pistes d'exploration intéressantes pour l'utilisateur.
+- **Format de Réponse** : L'API doit retourner une liste de 3 chaînes de caractères (les questions suggérées) au format JSON.
+- **Logique d'Appel** : Le frontend appellera cet endpoint API après chaque réponse de l'agent pour obtenir les nouvelles suggestions.
+
+## 8. Design et Esthétique
 - **Style Moderne & Minimaliste** : Utiliser des espacements généreux et une typographie claire.
 - **Effet Glassmorphism** : Appliquer un effet de "background glass" (fond flouté semi-transparent) sur les composants principaux (ex: Sidebar ou bulles de message) pour un aspect premium.
 - **Identité Visuelle** : Intégrer le nouveau logo professionnel (disponible en modes Dark et Light dans les assets).
