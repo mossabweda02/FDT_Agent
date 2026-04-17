@@ -1,73 +1,62 @@
-# Spécifications Techniques : Refonte Full-Stack de l'Interface FDT Agent
+# Spécifications Techniques Finales : Refonte Full-Stack "Agent-FDT"
 
 ## 1. Rôles et Objectifs
 **Rôle :** Expert Full-Stack UI/UX Engineer & Architecte React.
-**Objectif :** Transformer l'interface actuelle du chatbot en une application web premium, modulaire et performante. L'accent doit être mis sur la clarté du "Thinking Process", l'interactivité utilisateur et une esthétique moderne (Glassmorphism).
+**Objectif :** Refondre l'interface utilisateur pour créer l'application **"Agent-FDT"** (anciennement Chronos-FDT). L'interface doit être premium, ultra-réactive, et corriger les bugs fonctionnels actuels tout en intégrant des animations modernes.
 
 ---
 
 ## 2. Architecture et Structure (Phase 1)
 
-### 2.1 Modularité du Code
-- **Décomposition des Composants :** Extraire la logique de `App.jsx` vers des composants atomiques situés dans `/components`.
-- **Composants Clés :** `Sidebar`, `ChatContainer`, `MessageItem`, `ThinkingStep`, `SettingsModal`, `SuggestionBar`.
-- **Gestion d'État :** Utiliser des hooks React (`useState`, `useEffect`, `useContext`) pour une gestion fluide sans alourdir le composant principal.
+### 2.1 Modularité et Nettoyage
+- **Composant Principal :** Le fichier `App.jsx` doit être allégé (max 100-150 lignes). Toute la logique métier, les appels API et les sous-composants doivent être déportés dans `/components`, `/hooks` et `/services`.
+- **Mise en Page :** L'interface ne doit pas s'étaler sur toute la largeur. Utiliser un conteneur centré (`max-w-6xl mx-auto`) pour une lecture confortable.
 
-### 2.2 Mise en Page et UX
-- **Résolution :** L'interface ne doit pas occuper toute la largeur de l'écran sur les grands moniteurs. Utiliser un conteneur avec une largeur maximale (ex: `max-w-5xl` ou `max-w-6xl`) et un centrage automatique (`mx-auto`).
-- **Nommage des Conversations :** Implémenter une fonction de nommage statique pour les conversations dans la Sidebar.
-  - *Note technique :* Ajouter un commentaire dans le code indiquant que ce nommage deviendra dynamique lors de l'intégration de la persistance en base de données.
-- **Horodatage et Copie :** Chaque message (User/Agent) doit afficher l'heure d'envoi et inclure un bouton "Copier" discret mais accessible.
+### 2.2 Navigation et Identité
+- **Nom de l'Application :** Remplacer partout "Chronos-FDT" par **"Agent-FDT"**.
+- **Barre de Navigation (Navbar) :** Remplacer l'indicateur "Connecté" basique par une section profil plus élégante (ex: Avatar utilisateur avec menu déroulant, statut de connexion stylisé avec une pastille lumineuse).
+- **Icônes :** Utiliser exclusivement la bibliothèque **Lucide-React**. Si elle n'est pas installée, indiquer la commande : `npm install lucide-react`.
 
 ---
 
-## 3. Fonctionnalités Avancées
+## 3. Fonctionnalités et Corrections
 
-### 3.1 Visualisation du "Thinking Process"
-- **Remplacement des Icônes :** Éliminer les icônes de clavier. Utiliser des icônes vectorielles (Lucide-React) :
-  - Loupe pour l'analyse.
-  - Base de données pour les requêtes SQL.
-  - Check-circle pour la finalisation.
-- **Étapes Séquentielles :** Afficher les étapes de réflexion de manière chronologique, en masquant les requêtes techniques brutes pour l'utilisateur final.
+### 3.1 Paramètres et Langue (Settings)
+- **Correction Langue :** Fixer le sélecteur de langue (FR/EN). S'assurer que le changement d'état (state) déclenche bien la traduction de l'interface (utiliser un contexte ou un hook de traduction).
+- **Thèmes :** Améliorer les modes Clair et Sombre.
+  - *Mode Sombre :* Utiliser des gris profonds (#0f172a) avec des accents cyan.
+  - *Mode Clair :* Utiliser des blancs cassés avec des ombres douces pour un aspect papier premium.
+- **Nouveaux Paramètres (Total 4) :**
+  1. **Thème** (Clair/Sombre/Système).
+  2. **Langue** (Français/English) - *À FIXER*.
+  3. **Densité de l'UI** (Compact/Confortable).
+  4. **Notifications Sonores** (Activé/Désactivé).
 
-### 3.2 Système de Suggestions Contextuelles (Back-to-Front)
-- **Backend :** Créer un endpoint `/api/suggest_questions` qui analyse le dernier prompt.
-- **Logique :** Extraire 3 questions pertinentes depuis `training_examples.py` basées sur le contexte actuel.
-- **Frontend :** Afficher ces suggestions sous forme de "pills" cliquables à la fin de chaque réponse de l'agent.
-
-### 3.3 Paramètres (Settings)
-- **Interface :** Modal de réglages avec 4 options maximum :
-  1. Switch Thème (Clair/Sombre).
-  2. Sélecteur de Langue (FR par défaut, EN).
-  3. Gestion de session/sécurité.
-  4. Préférences d'affichage.
+### 3.2 Messagerie et Suggestions
+- **Horodatage et Copie :** Afficher l'heure pour chaque message et ajouter un bouton "Copier" stylisé.
+- **Suggestions Automatiques :** Activer l'affichage de **3 questions suggestions** immédiatement après chaque réponse de l'agent. Ces suggestions doivent être cliquables et envoyer directement le texte dans le chat.
+- **Nommage des Conversations :** Implémenter un nommage statique dans la Sidebar avec un commentaire : *"TODO: Rendre dynamique après intégration de la base de données"*.
 
 ---
 
-## 4. Esthétique et Animations (Phase 2)
-
-### 4.1 Design Visuel
-- **Glassmorphism :** Appliquer des effets de flou d'arrière-plan (`backdrop-blur`) et des bordures semi-transparentes sur la Sidebar et les bulles de message.
-- **Identité :** Utiliser les logos officiels (`assets/logo_light.png` et `assets/logo_dark.png`) selon le thème actif.
-
-### 4.2 Animations 3D et Transitions
-- **Bibliothèques :** Utiliser `Framer Motion` ou `Three.js` (si nécessaire) pour des transitions fluides.
-- **Animations Recommandées :**
-  - Entrée progressive des messages avec un léger effet d'élévation.
-  - Transition fluide entre les thèmes (Dark/Light).
-  - Micro-interactions sur les boutons et les suggestions (hover effects, scale).
-  - Animation de chargement "Thinking" élégante et non intrusive.
+## 4. Spécifications Backend (Suggestions)
+- **Endpoint :** `/api/suggest_questions` (FastAPI/Python).
+- **Logique :** Analyser le dernier message pour retourner 3 questions cohérentes extraites de `training_examples.py`.
 
 ---
 
-## 5. Contraintes et Livrables
+## 5. Esthétique et Animations (Phase 2)
 
-### 5.1 Contraintes Techniques
-- **Performance :** Le fichier `App.jsx` doit rester léger (moins de 150 lignes), toute la logique doit être déportée.
-- **Responsive :** Parfaitement fonctionnel sur Mobile, Tablette et Desktop.
-- **Sécurité :** Prévoir l'isolation des données par utilisateur (préparation pour la phase d'historisation).
+### 5.1 Glassmorphism et 3D
+- **Effets :** Utiliser `backdrop-blur-md` et des bordures `border-white/10` pour un effet de verre.
+- **Animations :** Utiliser **Framer Motion** (`npm install framer-motion`).
+  - Apparition des messages en "fade-in slide-up".
+  - Micro-animations 3D sur les cartes de suggestions (léger tilt au survol).
+  - Transition fluide (0.3s) lors du changement de thème.
 
-### 5.2 Livrables Attendus
-1. **Code Source :** Structure de dossiers organisée (`/components`, `/hooks`, `/assets`, `/services`).
-2. **Backend :** Script Python/FastAPI pour l'endpoint de suggestions.
-3. **Documentation :** Commentaires clairs dans le code pour les parties statiques destinées à devenir dynamiques.
+---
+
+## 6. Contraintes et Livrables
+- **Installation :** Si des packages manquent (framer-motion, lucide-react), les lister clairement au début de la réponse.
+- **Code :** Fournir une structure de fichiers propre.
+- **Commentaires :** Indiquer explicitement les zones de code statiques qui devront être liées à la base de données plus tard.
