@@ -56,7 +56,7 @@ ENDPOINT = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
 
 # ── Versioning ────────────────────────────────────────────────────
 AGENT_BASE_NAME = "FDT-Agent"   # Nom du agent sans la version, utilisé pour construire le nom final
-CURRENT_VERSION = "v1.0"          # Version actuelle, à incrémenter manuellement à chaque changement significatif
+CURRENT_VERSION = "v1.1"          # Version actuelle, à incrémenter manuellement à chaque changement significatif
 
 HASH_FILE    = ".prompt_hash" # Fichier local pour stocker le hash du prompt envoyé à Azure
 VERSION_FILE = ".agent_version" # Fichier local pour stocker le nom de la dernière version envoyée 
