@@ -27,7 +27,6 @@ WHERE MONTH(h.PERIODFROM) = 1
   AND YEAR(h.PERIODFROM) = 2026""",
         "expected_result": "476 heures (tous statuts : Draft + Submitted + Approved)",
     },
-
     {
         "user_question": "Combien d'heures APPROUVÉES en janvier 2026 ?",
         "reasoning": (
@@ -43,7 +42,6 @@ WHERE h.APPROVALSTATUS = 3
   AND YEAR(h.PERIODFROM) = 2026""",
         "expected_result": "70 heures (uniquement approuvées)",
     },
-
     {
         "user_question": "Liste des projets actifs",
         "reasoning": (
@@ -51,11 +49,16 @@ WHERE h.APPROVALSTATUS = 3
             "Actifs = STATUS IN (1,2,3)"
         ),
         "sql_query": """
-SELECT PROJID, PROJNAME, STATUS
+SELECT PROJNAME, 
+       CASE STATUS 
+         WHEN 1 THEN 'Estimé' 
+         WHEN 2 THEN 'Planifié' 
+         WHEN 3 THEN 'En cours' 
+       END AS Statut
 FROM prj_proj_table
 WHERE STATUS IN (1, 2, 3)
 ORDER BY PROJNAME""",
-        "expected_result": "Liste projets Estimated/Scheduled/InProcess",
+        "expected_result": "Voici les projets actuellement actifs (Estimés, Planifiés ou En cours) : [Tableau avec Nom du Projet et Statut en clair]",
     },
 ]
 
@@ -78,7 +81,6 @@ GROUP BY r.NAME
 ORDER BY TotalHeures DESC""",
         "expected_result": "Émilie Gagnon 350h, Oumaima Chmissi 98h, Jason Li 28h",
     },
-
     {
         "user_question": "TOP 3 projets par heures en 2026",
         "reasoning": (
@@ -97,7 +99,6 @@ GROUP BY p.PROJID, p.PROJNAME
 ORDER BY TotalHeures DESC""",
         "expected_result": "PRJ-00329 (1540h), PRJ-00022 (924h), PRJ-00407 (518h)",
     },
-
     {
         "user_question": "What are the top 3 projects by hours worked in 2026?",
         "reasoning": (
@@ -137,7 +138,6 @@ GROUP BY r.NAME, p.PROJNAME
 ORDER BY r.NAME, TotalHeures DESC""",
         "expected_result": "Matrice employé × projet avec heures",
     },
-
     {
         "user_question": "Quelles tâches ont été effectuées sur le projet PRJ-00329 ?",
         "reasoning": (
@@ -155,7 +155,6 @@ GROUP BY t.ACTIVITYNUMBER, t.TASKNAME, l.CATEGORYID
 ORDER BY TotalHeures DESC""",
         "expected_result": "Tâches PRJ-00329 avec heures par catégorie",
     },
-
     {
         "user_question": "Quels sont les projets les plus rentables ?",
         "reasoning": (
