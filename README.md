@@ -1,3 +1,4 @@
+
 <div align="center">
     <h1>FDT Agent - AI-Powered Timesheet Analytics</h1>
     <p>Autonomous agent for intelligent timesheet analysis and business intelligence on Azure Synapse</p>
@@ -370,10 +371,20 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+# Introduction 
+TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
 
-Built with:
-- [Azure AI Agents](https://learn.microsoft.com/en-us/azure/ai-services/agents/)
-- [Azure Synapse Analytics](https://azure.microsoft.com/en-us/services/synapse-analytics/)
-- [SQLAlchemy](https://www.sqlalchemy.org/)
-- Open source community
+# Getting Started
+TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
+1.	Installation process
+2.	Software dependencies
+3.	Latest releases
+4.	API references
+
+# Build and Test
+TODO: Describe and show how to build your code and run the tests. 
+
+# Contribute
+TODO: Explain how other users and developers can contribute to make your code better. 
+
+
