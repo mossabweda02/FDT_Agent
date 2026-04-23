@@ -1,11 +1,11 @@
 """
 Exemples few-shot — annotés avec les vraies données.
 
-RÈGLE ABSOLUE dans tous les exemples :
-❌ Jamais APPROVALSTATUS = 3 par défaut
-❌ Jamais LIMIT
-✅ Toujours dbo.table_name
-✅ Toujours TOP N
+Objectif : fournir un apprentissage par l'exemple riche et réaliste pour guider le modèle dans la génération de requêtes SQL correctes et efficaces.
+
+c'est quoi few-shot ? : Le few-shot learning est une technique d'apprentissage automatique où un modèle est entraîné à effectuer une tâche spécifique en lui fournissant 
+seulement quelques exemples d'entrée-sortie. Dans le contexte de la génération de requêtes SQL, le few-shot learning peut aider le modèle à comprendre les structures et les 
+patterns des requêtes correctes en lui montrant quelques exemples annotés avec les vraies données.
 """
 
 from typing import List, Dict
@@ -49,11 +49,16 @@ WHERE h.APPROVALSTATUS = 3
             "Actifs = STATUS IN (1,2,3)"
         ),
         "sql_query": """
-SELECT PROJID, PROJNAME, STATUS
+SELECT PROJNAME, 
+       CASE STATUS 
+         WHEN 1 THEN 'Estimé' 
+         WHEN 2 THEN 'Planifié' 
+         WHEN 3 THEN 'En cours' 
+       END AS Statut
 FROM prj_proj_table
 WHERE STATUS IN (1, 2, 3)
 ORDER BY PROJNAME""",
-        "expected_result": "Liste projets Estimated/Scheduled/InProcess",
+        "expected_result": "Voici les projets actuellement actifs (Estimés, Planifiés ou En cours) : [Tableau avec Nom du Projet et Statut en clair]",
     },
 ]
 
@@ -213,12 +218,14 @@ ORDER BY TotalHeures DESC""",
     },
 ]
 
-
+# ── Fonctions d'accès aux exemples ───────────────────────────────────────
+# Cet fonction permette de récupérer les exemples d'entraînement pour les intégrer dans le prompt de formation du modèle.
 def get_all_examples() -> List[Dict]:
     return (BASIC_EXAMPLES + INTERMEDIATE_EXAMPLES
             + ADVANCED_EXAMPLES + ERROR_CORRECTION_EXAMPLES)
 
-
+# ── Fonction de formatage pour le prompt ───────────────────────────────────────
+# Cette fonction convertit la liste d'exemples en une chaîne de caractères formatée pour être utilisée dans le prompt d'entraînement du modèle.
 def format_examples_for_prompt() -> str:
     examples = get_all_examples()
     out = "## Exemples SQL — Few-Shot Learning\n\n"
@@ -246,6 +253,7 @@ def format_examples_for_prompt() -> str:
 
     return out
 
+# ── Test d'affichage des exemples ───────────────────────────────────────
 if __name__ == "__main__":
     all_ex = get_all_examples()
     print(f"Total : {len(all_ex)} exemples")

@@ -1,7 +1,10 @@
 """
 Bloc 2 — Schéma complet de la Silver Layer.
-Modifie ce fichier quand une table est ajoutée ou que des colonnes changent.
+Objectif : fournir une description détaillée et structurée du schéma de la Silver Layer, incluant les tables principales, leurs colonnes clés, 
+les types de données, les relations entre les tables et les règles spécifiques liées à certaines colonnes (comme APPROVALSTATUS) pour permettre 
+au modèle de comprendre le contexte des données et de construire des requêtes SQL précises et efficaces.
 
+Note : Mettre à jour ce prompt à chaque ajout de table ou modification de colonne pour maintenir
 """
 
 SCHEMA_PROMPT = """

@@ -2,7 +2,8 @@
 core/prompts/system_prompt.py
 ==============================
 Assembleur final — construit SYSTEM_PROMPT depuis les 4 blocs.
-
+Objectif : centraliser la construction du prompt système en un seul endroit, en combinant les différentes sections (rôle, schéma, règles, exemples) pour créer 
+un prompt cohérent et complet.
     system_prompt = role + schema + rules + examples
 Chaque bloc est dans un fichier séparé pour faciliter la maintenance.
 """
