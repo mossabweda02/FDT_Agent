@@ -316,7 +316,6 @@ async def ask_agent(client: AgentsClient, question: str) -> str:
     )
 
     while run.status in (RunStatus.QUEUED, RunStatus.IN_PROGRESS, RunStatus.REQUIRES_ACTION):
-        await asyncio.sleep(1)
         run = await client.runs.get(thread_id=thread.id, run_id=run.id)
 
         if run.status == RunStatus.REQUIRES_ACTION:
