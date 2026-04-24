@@ -121,8 +121,10 @@ def _get_contextual_suggestions(user_question: str, n: int = 3) -> list[str]:
                 score += 3
 
         # Bonus pour les questions de même niveau de complexité
-        if "join" in ex.get("sql_query","").lower().count("join") == \
-           ex.get("sql_query","").lower().count("join"):
+        sql = ex.get("sql_query", "").lower()
+        join_count = sql.count("join")
+
+        if join_count > 0:
             score += 1
 
         if score > 0:
