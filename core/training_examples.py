@@ -60,6 +60,21 @@ WHERE STATUS IN (1, 2, 3)
 ORDER BY PROJNAME""",
         "expected_result": "Voici les projets actuellement actifs (Estimés, Planifiés ou En cours) : [Tableau avec Nom du Projet et Statut en clair]",
     },
+    {
+    "user_question": "Combien d'heures ont été enregistrées en décembre 2025 ?",
+    "reasoning": (
+        "Même logique que janvier\n"
+        "Mais aucune donnée possible\n"
+        "→ utiliser COALESCE"
+    ),
+    "sql_query": """
+SELECT COALESCE(SUM(l.QTY), 0) AS TotalHeures
+FROM timesheet_header h
+JOIN timesheet_line l ON h.TIMESHEETNBR = l.TIMESHEETNBR
+WHERE MONTH(h.PERIODFROM) = 12
+  AND YEAR(h.PERIODFROM) = 2025""",
+    "expected_result": "0 heure si aucune donnée",
+}
 ]
 
 INTERMEDIATE_EXAMPLES = [
@@ -116,6 +131,24 @@ GROUP BY p.PROJID, p.PROJNAME
 ORDER BY TotalHeures DESC""",
         "expected_result": "Top 3 projects with hours (English answer)",
     },
+    {
+    "user_question": "Quels employés ont travaillé en janvier 2026 ?",
+    "reasoning": (
+        "Jointure header + line + resource\n"
+        "GROUP BY obligatoire\n"
+        "r.NAME obligatoire"
+    ),
+    "sql_query": """
+SELECT r.NAME AS Employe, SUM(l.QTY) AS TotalHeures
+FROM timesheet_header h
+JOIN timesheet_line l ON h.TIMESHEETNBR = l.TIMESHEETNBR
+JOIN ga_resource r ON r.RECID = h.RESOURCE
+WHERE MONTH(h.PERIODFROM) = 1
+  AND YEAR(h.PERIODFROM) = 2026
+GROUP BY r.NAME
+ORDER BY TotalHeures DESC""",
+    "expected_result": "Liste employés avec heures",
+}
 ]
 
 ADVANCED_EXAMPLES = [
@@ -136,7 +169,7 @@ WHERE MONTH(h.PERIODFROM) = 1
   AND YEAR(h.PERIODFROM) = 2026
 GROUP BY r.NAME, p.PROJNAME
 ORDER BY r.NAME, TotalHeures DESC""",
-        "expected_result": "Matrice employé × projet avec heures",
+        "expected_result": "Matrice employé × projet avec heures — afficher sous forme de tableau Markdown",
     },
     {
         "user_question": "Quelles tâches ont été effectuées sur le projet PRJ-00329 ?",
@@ -158,24 +191,79 @@ ORDER BY TotalHeures DESC""",
     {
         "user_question": "Quels sont les projets les plus rentables ?",
         "reasoning": (
-            "Rentabilité = SalePrice - StandardCost\n"
+            "Rentabilité = TotalSalePrice - TotalStandardCost\n"
+            "Colonnes disponibles : TotalSalePrice, TotalStandardCost dans timesheet_line\n"
             "Jointure line + prj_proj_table\n"
             "⚠️ PAS de filtre APPROVALSTATUS\n"
-            "WHERE TotalSalePrice IS NOT NULL"
+            "⚠️ Certains projets auront Marge = NULL si données manquantes → ORDER BY COALESCE"
         ),
         "sql_query": """
 SELECT
-    p.PROJID,
-    p.PROJNAME,
+    p.PROJNAME AS Projet,
     SUM(l.TotalSalePrice)    AS ChiffreAffaires,
     SUM(l.TotalStandardCost) AS CoutTotal,
     SUM(l.TotalSalePrice) - SUM(l.TotalStandardCost) AS Marge
 FROM timesheet_line l
 JOIN prj_proj_table p ON p.PROJID = l.PROJID
-WHERE l.TotalSalePrice IS NOT NULL
 GROUP BY p.PROJID, p.PROJNAME
 ORDER BY Marge DESC""",
-        "expected_result": "Projets classés par marge décroissante",
+        "expected_result": "Projets classés par marge décroissante — afficher les NaN comme 'Données insuffisantes'",
+    },
+    {
+        "user_question": "Quel projet a pris le plus de temps ?",
+        "reasoning": (
+            "TOP 1\n"
+            "GROUP BY projet\n"
+            "ORDER BY SUM DESC\n"
+            "Jointure directe line + prj_proj_table (pas besoin de header)"
+        ),
+        "sql_query": """
+SELECT TOP 1 p.PROJNAME AS Projet, SUM(l.QTY) AS TotalHeures
+FROM timesheet_line l
+JOIN prj_proj_table p ON p.PROJID = l.PROJID
+GROUP BY p.PROJID, p.PROJNAME
+ORDER BY TotalHeures DESC""",
+        "expected_result": "Projet avec le plus grand nombre d'heures",
+    },
+    {
+        "user_question": "Quelle tâche prend le plus de temps et sur quel projet ?",
+        "reasoning": (
+            "TOP 1\n"
+            "Jointure line + ga_task + prj_proj_table\n"
+            "⚠️ PAS de jointure header si pas nécessaire\n"
+            "GROUP BY tâche ET projet\n"
+            "ORDER BY SUM(QTY) DESC"
+        ),
+        "sql_query": """
+SELECT TOP 1
+    t.TASKNAME  AS Tache,
+    p.PROJNAME  AS Projet,
+    SUM(l.QTY)  AS TotalHeures
+FROM timesheet_line l
+JOIN ga_task t        ON t.ACTIVITYNUMBER = l.ACTIVITYNUMBER
+JOIN prj_proj_table p ON p.PROJID = l.PROJID
+GROUP BY t.ACTIVITYNUMBER, t.TASKNAME, p.PROJID, p.PROJNAME
+ORDER BY TotalHeures DESC""",
+        "expected_result": "Tâche avec le plus d'heures et son projet associé",
+    },
+    {
+        "user_question": "Quel est le total des heures par projet en janvier 2026 ?",
+        "reasoning": (
+            "Jointure header + line + prj_proj_table\n"
+            "Filtre mois = 1, année = 2026\n"
+            "GROUP BY projet\n"
+            "⚠️ PAS de filtre APPROVALSTATUS"
+        ),
+        "sql_query": """
+SELECT p.PROJNAME AS Projet, SUM(l.QTY) AS TotalHeures
+FROM timesheet_header h
+JOIN timesheet_line l  ON h.TIMESHEETNBR = l.TIMESHEETNBR
+JOIN prj_proj_table p  ON p.PROJID = l.PROJID
+WHERE MONTH(h.PERIODFROM) = 1
+  AND YEAR(h.PERIODFROM) = 2026
+GROUP BY p.PROJID, p.PROJNAME
+ORDER BY TotalHeures DESC""",
+        "expected_result": "Tableau des projets avec heures triées par ordre décroissant",
     },
 ]
 
@@ -216,40 +304,68 @@ GROUP BY t.ACTIVITYNUMBER, t.TASKNAME
 ORDER BY TotalHeures DESC""",
         "expected_result": "Tâches sans erreur 'could not be bound'",
     },
+    {
+    "user_question": "Heures par employé",
+    "wrong_sql": "SELECT r",
+    "why_wrong": "Requête incomplète → manque FROM + JOIN + GROUP BY",
+    "sql_query": """
+SELECT r.NAME, SUM(l.QTY)
+FROM timesheet_header h
+JOIN timesheet_line l ON h.TIMESHEETNBR = l.TIMESHEETNBR
+JOIN ga_resource r ON r.RECID = h.RESOURCE
+GROUP BY r.NAME""",
+    "expected_result": "Requête complète",
+}
 ]
 
 # ── Fonctions d'accès aux exemples ───────────────────────────────────────
 # Cet fonction permette de récupérer les exemples d'entraînement pour les intégrer dans le prompt de formation du modèle.
+TOP_EXAMPLES = (
+    BASIC_EXAMPLES           # 4 exemples basiques
+    + INTERMEDIATE_EXAMPLES  # 4 exemples intermédiaires
+    + ADVANCED_EXAMPLES      # 6 exemples avancés (tous inclus maintenant)
+    + ERROR_CORRECTION_EXAMPLES  # 4 corrections d'erreurs
+)
 def get_all_examples() -> List[Dict]:
-    return (BASIC_EXAMPLES + INTERMEDIATE_EXAMPLES
-            + ADVANCED_EXAMPLES + ERROR_CORRECTION_EXAMPLES)
+    return TOP_EXAMPLES 
 
 # ── Fonction de formatage pour le prompt ───────────────────────────────────────
 # Cette fonction convertit la liste d'exemples en une chaîne de caractères formatée pour être utilisée dans le prompt d'entraînement du modèle.
 def format_examples_for_prompt() -> str:
     examples = get_all_examples()
+
     out = "## Exemples SQL — Few-Shot Learning\n\n"
-    out += "RÈGLE : Ne JAMAIS filtrer par APPROVALSTATUS par défaut.\n\n"
+    out += "RÈGLES IMPORTANTES :\n"
+    out += "- Générer UNIQUEMENT des requêtes SQL complètes et valides\n"
+    out += "- Toujours inclure FROM + JOIN si nécessaire\n"
+    out += "- Toujours utiliser GROUP BY avec SUM\n"
+    out += "- Ne JAMAIS filtrer APPROVALSTATUS sauf demande explicite\n\n"
 
     for i, ex in enumerate(examples, 1):
-        out += f"### Exemple {i} — {ex['user_question']}\n\n"
+        out += f"### Exemple {i}\n\n"
 
+        # Question
+        out += f"Question:\n{ex['user_question']}\n\n"
+
+        # Raisonnement
         if "reasoning" in ex:
-            out += f"Raisonnement :\n{ex['reasoning']}\n\n"
+            out += f"Analyse:\n{ex['reasoning']}\n\n"
 
+        # Mauvais SQL
         if "wrong_sql" in ex:
-            # ✅ Balise "text" au lieu de "sql" — le check ignore les blocs non-sql
-            out += f"❌ SQL incorrect (ne pas reproduire) :\n"
+            out += "❌ SQL incorrect (ne pas reproduire):\n"
             out += f"```text\n{ex['wrong_sql'].strip()}\n```\n"
-            out += f"Pourquoi incorrect : {ex['why_wrong']}\n\n"
+            out += f"Erreur:\n{ex['why_wrong']}\n\n"
 
-        # ✅ Seul le bon SQL est dans ```sql```
-        out += f"✅ SQL correct :\n```sql\n{ex['sql_query'].strip()}\n```\n\n"
+        # Bon SQL
+        out += "✅ SQL attendu:\n"
+        out += f"```sql\n{ex['sql_query'].strip()}\n```\n\n"
 
+        # Résultat
         if "expected_result" in ex:
-            out += f"Résultat : {ex['expected_result']}\n\n"
+            out += f"Réponse attendue:\n{ex['expected_result']}\n\n"
 
-        out += "---\n\n"
+        out += "-----------------------------\n\n"
 
     return out
 
