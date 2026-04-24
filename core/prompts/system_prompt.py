@@ -20,9 +20,9 @@ def build_system_prompt() -> str:
     Appelé par update_agent.py à chaque mise à jour Azure.
     """
     blocks = [
-        ("ROLE",     ROLE_PROMPT),
-        ("SCHEMA",   SCHEMA_PROMPT),
-        ("RULES",    RULES_PROMPT),
+        ("ROLE", ROLE_PROMPT),
+        ("RULES", RULES_PROMPT), 
+        ("SCHEMA", SCHEMA_PROMPT),
         ("EXAMPLES", format_examples_for_prompt()),
     ]
     parts = []
