@@ -185,6 +185,13 @@ def get_database_schema() -> str:
 
 # ── Outil 6 ───────────────────────────────────────────────────────
 def execute_query(query: str) -> str:
+    """
+    Retourne TOUJOURS un JSON string (jamais un dict).
+    Le LLM ne peut pas lire un dict Python — il a besoin d'une string JSON.
+    """
+    if not query or not query.strip():
+        return _err("Requête vide.", "Fournir une requête SQL SELECT complète.")
+
     is_valid, error = validate_sql_query(query)
     if not is_valid:
         logger.error(f"SQL blocked: {sanitize_query_for_logging(query)}")
@@ -203,8 +210,9 @@ def execute_query(query: str) -> str:
                 ),
             })
 
-        rows = json.loads(df.to_json(orient="records",
-                                     date_format="iso", default_handler=str))
+        rows = json.loads(
+            df.to_json(orient="records", date_format="iso", default_handler=str)
+        )
         logger.info(f"OK: {len(rows)} rows")
         return _ok({"rows": rows, "row_count": len(rows),
                     "columns": list(df.columns)})
@@ -220,15 +228,14 @@ def execute_query(query: str) -> str:
         elif "LIMIT" in query.upper() and "syntax" in msg.lower():
             hint = "Remplacer LIMIT N par TOP N (T-SQL)."
         elif "could not be bound" in msg:
-            hint = ("Alias invalide. Si tu filtres sur h.APPROVALSTATUS, "
-                    "vérifie que timesheet_header h est dans le FROM.")
+            hint = ("Alias invalide — vérifier que toutes les tables du FROM "
+                    "correspondent aux alias utilisés dans le WHERE.")
         elif "Conversion failed" in msg:
             hint = "Type incorrect. Utiliser get_sample_data() pour voir les vraies valeurs."
         else:
             hint = "Vérifier la requête et réessayer."
 
         return _err(msg, hint)
-
 
 # ── Mapping ───────────────────────────────────────────────────────
 TOOL_FUNCTIONS = {
