@@ -2,11 +2,10 @@
 agent/update_agent.py
 ======================
 Pousse le SYSTEM_PROMPT et les TOOLS vers Azure AI Foundry.
-OBLIGATOIRE après chaque modification des fichiers prompts/.
+OBLIGATOIRE après chaque modification des fichiers prompts/ et tools/.
 
 Usage :
     python -m agent.update_agent                    # version courante
-    python -m agent.update_agent --force            # forcer même si pas de changement
     python -m agent.update_agent --version v1.2     # changer la version
     python -m agent.update_agent --name "Chronos-FDT v2.0"  # nom complet custom
 """

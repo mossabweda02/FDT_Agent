@@ -1,5 +1,7 @@
 """
 Outils SQL exposés à l'agent Azure AI Foundry.
+ce fichier contient la logique de chaque outil défini dans tools_definitions.py, ainsi que le mapping final TOOL_FUNCTIONS utilisé par fdt_agent.py pour 
+exécuter les tool calls.
 """
 
 import json
@@ -28,7 +30,7 @@ def _err(msg: str, hint: str = "") -> str:
 
 
 def _read(sql: str) -> pd.DataFrame:
-    """Exécute un SELECT via connexion explicite (fix SQLAlchemy 2.x)."""
+    """Exécute un SELECT via connexion explicite et retourne un DataFrame."""
     engine = get_engine()
     with engine.connect() as conn:
         return pd.read_sql(sql, conn)

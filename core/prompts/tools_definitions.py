@@ -1,8 +1,11 @@
 """
 Bloc 4 — Définitions des 6 outils exposés à l'agent Azure.
-    Objectif : fournir une description précise et structurée des fonctionnalités disponibles pour l'agent Azure, afin de garantir une 
-    utilisation correcte et efficace des outils dans la génération de requêtes SQL et l'interaction avec la Silver Layer.
-Synchronisé avec TOOL_FUNCTIONS dans functions_tools.py.
+    Objectif : 
+- Définir clairement les 6 outils disponibles pour l'agent Azure AI Foundry, avec leurs noms, descriptions et schémas d'arguments. 
+Ces définitions sont utilisées à la fois dans :
+* le prompt système (pour que l'agent sache quels outils il peut appeler) 
+* functions_tools.py (pour implémenter la logique de chaque outil).
+
 """
 
 TOOLS_DEFINITIONS = [
