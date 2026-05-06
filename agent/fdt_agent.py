@@ -1,3 +1,7 @@
+# LEGACY — Azure AI Foundry Agent
+# Non utilisé depuis migration Pydantic AI (voir agent/pydantic_agent/).
+# Conserver pour rollback ou comparaison.
+
 """
 agent/fdt_agent.py
 ===================
