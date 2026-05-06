@@ -60,27 +60,30 @@ CURRENT_VERSION = "v1.1"          # Version actuelle, à incrémenter manuelleme
 HASH_FILE    = ".prompt_hash" # Fichier local pour stocker le hash du prompt envoyé à Azure
 VERSION_FILE = ".agent_version" # Fichier local pour stocker le nom de la dernière version envoyée 
 
+# hash prompt : pour savoir si le prompt a été modifié ou non grâce au hash qui sera enregistré dans le fichier .prompt_hash, 
+# si le hash change on va savoir que le prompt a été modifié et on va devoir mettre a jour l'agent
 
+# fonction pour calculer le hash du prompt  
 def _hash(text: str) -> str:
     return hashlib.md5(text.encode()).hexdigest()[:8]
 
-
+# fonction pour charger le hash du prompt  
 def _load(path: str, default: str = "") -> str:
     try:
         return open(path).read().strip()
     except FileNotFoundError:
         return default
 
-
+# fonction pour sauvegarder le hash du prompt  
 def _save(path: str, content: str):
     open(path, "w").write(content)
 
-
+# fonction pour construire le nom de l'agent  
 def _build_name(version: str) -> str:
     """Construit le nom complet de l'agent."""
     return f"{AGENT_BASE_NAME} {version}"
 
-
+# fonction pour parser les arguments CLI 
 def _parse_args() -> dict:
     """Parse les arguments CLI."""
     args = {"force": False, "version": None, "name": None}

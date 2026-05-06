@@ -86,7 +86,6 @@ def get_sample_data(table_name: str) -> str:
         return _err(str(e),
                     f"Vérifier que '{table_name}' existe avec list_tables().")
 
-
 # ── Outil 4 ───────────────────────────────────────────────────────
 def get_table_relationships() -> str:
     data = {

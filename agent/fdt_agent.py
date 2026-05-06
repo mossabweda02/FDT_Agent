@@ -24,10 +24,10 @@ load_dotenv()
 AGENT_ID = os.getenv("AGENT_ID")
 ENDPOINT = os.getenv("AZURE_AI_PROJECT_ENDPOINT")
 
-# ── Messages d'erreur professionnels ──────────────────────────────
+# ── Messages d'erreur  ──────────────────────────────
 FAILED_MESSAGES = {
     "fr": (
-        "Je n'ai pas pu obtenir cette information. "
+        "Je n'ai pas pu obtenir cette information."
         "Veuillez reformuler votre question ou préciser la période concernée."
     ),
     "en": (
@@ -36,8 +36,7 @@ FAILED_MESSAGES = {
     ),
 }
 
-
-# ── Parse robuste des arguments du tool call ──────────────────────
+# ── Parse  des arguments du tool call ──────────────────────
 def parse_tool_args(raw: str) -> dict:
     """
     Parse les arguments d'un tool call de manière robuste.
@@ -76,7 +75,7 @@ def parse_tool_args(raw: str) -> dict:
     return {}
 
 
-# ── Fonction principale ────────────────────────────────────────────
+# ── Fonction principale  ────────────────────────────────────────────
 async def ask(question: str) -> str:
     """
     Envoie une question à l'agent Azure AI Foundry et retourne la réponse.
@@ -104,23 +103,10 @@ async def ask(question: str) -> str:
                 agent_id=AGENT_ID,
             )
 
-            # ── ✅ FIX P1 : boucle corrigée ──────────────────────
-            # AVANT (cassé) :
-            #   while run.status in [RunStatus.QUEUED, RunStatus.IN_PROGRESS]:
-            #       ...
-            #       if run.status == RunStatus.REQUIRES_ACTION:
-            #           ...
-            #           return str(result)  ← RETOURNAIT LE RÉSULTAT DU TOOL, PAS LA RÉPONSE
-            #
-            # APRÈS (correct) :
-            #   while inclut REQUIRES_ACTION dans les statuts à surveiller
-            #   → soumet les outputs et continue la boucle
-            #   → le return se fait uniquement quand status == COMPLETED
-
             while run.status in (
                 RunStatus.QUEUED,
                 RunStatus.IN_PROGRESS,
-                RunStatus.REQUIRES_ACTION,  # ← ajouté ici
+                RunStatus.REQUIRES_ACTION,  
             ):
                 await asyncio.sleep(1)
                 run = await client.runs.get(
@@ -153,7 +139,6 @@ async def ask(question: str) -> str:
                         run_id=run.id,
                         tool_outputs=tool_outputs,
                     )
-                    # ← PAS de return ici — on continue la boucle
 
             # 3. Résultat final
             if run.status == RunStatus.COMPLETED:
@@ -165,7 +150,7 @@ async def ask(question: str) -> str:
                                 return block.text.value
                 return "Aucune réponse reçue."
 
-            # ✅ FIX P2 : message professionnel pour les échecs
+            # 4. en cas d'erreur
             if run.status == RunStatus.FAILED:
                 last_error = getattr(run, "last_error", {})
                 print(f"[ERREUR] RunStatus.FAILED — {last_error}")

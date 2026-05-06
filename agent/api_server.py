@@ -20,6 +20,7 @@ from core.training_examples import get_all_examples
 
 app = FastAPI(title="Chronos-FDT API", version="1.1.0")
 
+# communication de l'interface React avec l'API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],

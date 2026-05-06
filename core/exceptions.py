@@ -38,7 +38,6 @@ class SQLValidationError(FDTBaseError):
         super().__init__(message)
         self.query = query
 
-
 class QueryExecutionError(FDTBaseError):
     """
     Erreur lors de l'exécution d'une requête SQL.
