@@ -5,3 +5,5 @@ pandas
 sqlalchemy
 python-dotenv
 pydantic-settings
+pydantic-ai
+pydantic-ai-slim[openai]
