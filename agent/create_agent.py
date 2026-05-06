@@ -1,3 +1,14 @@
+# LEGACY — Azure AI Foundry Agent
+# Non utilisé depuis migration Pydantic AI (voir agent/pydantic_agent/).
+# Conserver pour rollback ou comparaison.
+
+"""
+agent/create_agent.py
+===================
+ce fichier crée un agent Azure AI Foundry avec des outils pour interagir avec une base de données SQL.
+il s'exécute une seule fois 
+"""
+
 import os
 from dotenv import load_dotenv
 from azure.ai.agents import AgentsClient

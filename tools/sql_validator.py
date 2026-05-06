@@ -9,7 +9,6 @@ Pourquoi ce fichier ?
 1. Sécurité : Empêche INSERT/UPDATE/DELETE/DROP même si le LLM hallucine
 2. Performance : Validation locale instantanée (pas d'appel réseau)
 3. Coût : Évite les requêtes SQL inutiles qui consomment des ressources
-4. Traçabilité : Logs clairs des tentatives de requêtes interdites
 
 Architecture :
 --------------

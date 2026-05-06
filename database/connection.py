@@ -1,11 +1,10 @@
 """
 database/connection.py
 =======================
-Connexion Azure Synapse via DefaultAzureCredential (MFA-compatible, token mis en cache par az login).
-Aucune saisie de mot de passe après le premier az login.
+Connexion Azure Synapse via DefaultAzureCredential car cette méthode est plus sécurisée et compatible avec MFA et avoir des tokens qui se renouvellent automatiquement. 
 
 ActiveDirectoryPassword vs DefaultAzureCredential :
-- ActiveDirectoryPassword : nécessite de fournir un mot de passe en clair, pas idéal pour la sécurité et incompatible avec MFA.
+- ActiveDirectoryPassword : nécessite de fournir un mot de passe en clair, pose des problèmes de sécurité et incompatible avec MFA.
 - DefaultAzureCredential : essaie plusieurs méthodes d'authentification, y compris Azure CLI (az login), Managed Identity, et plus. 
 
 Note : 

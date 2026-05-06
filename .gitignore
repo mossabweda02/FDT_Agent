@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 .prompt_hash
 .agent_version
+FDT-Agent.md

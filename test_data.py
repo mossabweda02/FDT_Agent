@@ -13,108 +13,89 @@ from database.connection import get_engine
 
 engine = get_engine()
 
-
 # ─────────────────────────────────────────
-# 1. Liste des vues disponibles
+# 1. Récupération dynamique des vues
 # ─────────────────────────────────────────
-
 QUERY_VIEWS = """
-SELECT DISTINCT TABLE_NAME
+SELECT TABLE_NAME
 FROM INFORMATION_SCHEMA.VIEWS
 ORDER BY TABLE_NAME
 """
 
 views_df = pd.read_sql(QUERY_VIEWS, engine)
 
-print("\n==============================")
-print("VUES DISPONIBLES")
-print("==============================")
+print("\n" + "=" * 80)
+print("LISTE DES VUES DISPONIBLES")
+print("=" * 80)
 print(views_df.to_string(index=False))
 
+# Liste dynamique des vues
+all_views = views_df["TABLE_NAME"].tolist()
 
-# ─────────────────────────────────────────
-# 2. Exemple de données (timesheet_header)
-# ─────────────────────────────────────────
+# # ─────────────────────────────────────────
+# # 2. Exploration dynamique des vues
+# # ─────────────────────────────────────────
+# print("\n" + "=" * 80)
+# print("EXPLORATION DÉTAILLÉE DES VUES")
+# print("=" * 80)
 
-QUERY_SAMPLE_TIMESHEET = """
-SELECT TOP 10 *
-FROM timesheet_header
-"""
+# for view_name in all_views:
+#     try:
+#         print(f"\n{'=' * 80}")
+#         print(f"VUE : {view_name}")
+#         print(f"{'=' * 80}")
 
-sample_df = pd.read_sql(QUERY_SAMPLE_TIMESHEET, engine)
+#         # ─────────────────────────────────────────
+#         # 2.1 Récupération métadonnées colonnes
+#         # ─────────────────────────────────────────
+#         columns_query = f"""
+#         SELECT 
+#             COLUMN_NAME,
+#             DATA_TYPE
+#         FROM INFORMATION_SCHEMA.COLUMNS
+#         WHERE TABLE_NAME = '{view_name}'
+#         ORDER BY ORDINAL_POSITION
+#         """
 
-print("\n==============================")
-print("EXEMPLE DE DONNÉES : TIMESHEET_HEADER")
-print("==============================")
-print(sample_df.to_string(index=False))
+#         columns_df = pd.read_sql(columns_query, engine)
 
+#         print("\nCOLONNES ET TYPES :")
+#         print("-" * 40)
+#         print(columns_df.to_string(index=False))
 
-# ─────────────────────────────────────────
-# 3. Tables à explorer pour l'agent FDT
-# ─────────────────────────────────────────
+#         # ─────────────────────────────────────────
+#         # 2.2 Récupération 10 premières lignes
+#         # ─────────────────────────────────────────
+#         sample_query = f"SELECT TOP 10 * FROM [{view_name}]"
+#         sample_df = pd.read_sql(sample_query, engine)
 
-TABLES_TO_EXPLORE = [
-    "acp_expense_card",
-    "ga_enum_table",
-    "ga_enum_value_table",
-    "ga_location",
-    "ga_resource",
-    "ga_resource_booking",
-    "ga_task",
-    "ga_task_line",
-    "ga_task_source",
-    "ga_task_source_assignment",
-    "ga_unit_of_measure",
-    "hrm_working_calendar",
-    "hrm_working_day",
-    "hrm_working_hours",
-    "prc_vendor_order_header",
-    "prc_vendor_order_line",
-    "prj_delivery",
-    "prj_delivery_task",
-    "prj_equipment_operator",
-    "prj_proj_table",
-    "prj_project_assigned_resources",
-    "timesheet_header",
-    "timesheet_line",
-]
+#         print("\nAPERÇU DES 10 PREMIÈRES LIGNES :")
+#         print("-" * 40)
 
+#         if sample_df.empty:
+#             print("Aucune donnée disponible.")
+#         else:
+#             print(sample_df.to_string(index=False))
 
-# ─────────────────────────────────────────
-# 4. Exploration des tables
-# ─────────────────────────────────────────
+#     except Exception as e:
+#         print(f"\n❌ Erreur lors de l'exploration de {view_name}")
+#         print(f"Détail : {str(e)}")
 
-print("\n==============================")
-print("EXPLORATION DES TABLES")
-print("==============================")
+# # ─────────────────────────────────────────
+# # 4. Partie de test des reponses de l'agent FDT par rapport à la base de données
+# # ─────────────────────────────────────────
 
-for table in TABLES_TO_EXPLORE:
+# QUERY = """
+# SELECT COUNT(*) AS total_timesheets
+# FROM timesheet_header;
+# """
 
-    try:
-        df = pd.read_sql(f"SELECT TOP 3 * FROM {table}", engine)
+# print("\n==============================")
+# print("Reponse attendue")
+# print("==============================")
 
-        print(f"\n--- {table.upper()} ---")
-        print(f"Nombre de colonnes : {len(df.columns)}")
-        print("Colonnes :", list(df.columns))
-        print("\nExemple de données :")
-        print(df.to_string(index=False))
-
-    except Exception as e:
-        print(f"\n[{table}] → Introuvable ou erreur : {e}")
-
-# ─────────────────────────────────────────
-# 1. Partie de test des reponses de l'agent FDT par rapport à la base de données
-# ─────────────────────────────────────────
-
-QUERY = """
-SELECT COUNT(*) AS total_timesheets
-FROM timesheet_header;
-
-"""
-
-df = pd.read_sql(QUERY, engine)
-
-print("\n==============================")
-print("Reponse attendue")
-print("==============================")
-print(df.to_string(index=False))
+# try:
+#     df = pd.read_sql(QUERY, engine)
+#     print(df.to_string(index=False))
+# except Exception as e:
+#     print(f"Erreur lors du COUNT sur timesheet_header : {e}")

@@ -1,7 +1,8 @@
 """
-Dispatcher des tool calls de l'agent Azure AI Foundry.
+Role :  Exécuter les tool calls de l'agent Azure AI Foundry et retourner les résultats au format JSON string.
+
 Objectifs : 
-1. Robustesse : parse les arguments de manière tolérante (gère dict, JSON valide))
+1. Robustesse : parse les arguments pour gérer les cas où le LLM retourne du JSON mal formé, tronqué ou collé.
 2. Validation SQL : utilise sql_validator pour bloquer les requêtes dangereuses AVANT l'exécution
 3. Uniformité : garantit que la réponse est TOUJOURS une string JSON (jamais un dict car le LLM ne peut pas lire un dict), même en cas d'erreur
 """
@@ -15,7 +16,7 @@ from tools.sql_validator import validate_sql_query
 def _parse_args(raw) -> dict:
     """
     Parse les arguments du tool call de façon robuste.
-    Gère : dict déjà parsé, JSON string valide, JSON tronqué, garbage.
+    Gère : dict déjà parsé et JSON string valide.
     """
     # Déjà un dict
     if isinstance(raw, dict):

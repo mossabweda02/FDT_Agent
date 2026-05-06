@@ -1,10 +1,10 @@
 """
 agent/api_server.py
 ====================
-Backend FastAPI pour l'interface Chronos-FDT.
+Backend FastAPI pour l'interface FDT Agent.
 
 Endpoints :
-  POST /ask     — Envoie une question à l'agent Azure AI Foundry
+  POST /ask     — Envoie une question à l'agent pydantic ai
   POST /suggest — Retourne 3 suggestions contextuelles basées sur la question
 
 Usage :
@@ -15,11 +15,13 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
-from agent.fdt_agent import ask
+# from agent.fdt_agent import ask
+from agent.pydantic_agent import agent as pydantic_agent
 from core.training_examples import get_all_examples
 
-app = FastAPI(title="Chronos-FDT API", version="1.1.0")
+app = FastAPI(title="FDT Agent API", version="1.1.0")
 
+# communication de l'interface React avec l'API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -39,9 +41,9 @@ class SuggestRequest(BaseModel):
 
 # ── Endpoint principal ─────────────────────────────────────────────
 @app.post("/ask")
-async def ask_route(q: Question):
-    answer = await ask(q.question)
-    return {"answer": str(answer or "")}
+async def ask_route(q: Question) -> dict:
+    answer = await pydantic_agent.ask(q.question)
+    return {"answer": answer}
 
 
 # ── Endpoint suggestions contextuelles ────────────────────────────
@@ -161,7 +163,7 @@ def _get_contextual_suggestions(user_question: str, n: int = 3) -> list[str]:
 # ── Health check ───────────────────────────────────────────────────
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "Chronos-FDT API"}
+    return {"status": "ok", "service": "FDT Agent API"}
 
 
 # ── Dev ────────────────────────────────────────────────────────────
