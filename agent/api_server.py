@@ -14,12 +14,21 @@ Usage :
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+import logfire 
 
 # from agent.fdt_agent import ask
 from agent.pydantic_agent import agent as pydantic_agent
 from core.training_examples import get_all_examples
 
+logfire.configure(service_name="fdt-agent")        
+
 app = FastAPI(title="FDT Agent API", version="1.1.0")
+
+# Instrument pydantic ai (agent)
+logfire.instrument_pydantic_ai()       
+
+# Instrument fastapi (application web) 
+logfire.instrument_fastapi(app)
 
 # communication de l'interface React avec l'API
 app.add_middleware(
