@@ -5,3 +5,7 @@ __pycache__/
 .prompt_hash
 .agent_version
 FDT-Agent.md
+
+# Local observability debug exports
+observability_tool_outputs_anonymized.json
+export_tool_output_anonymized.py
