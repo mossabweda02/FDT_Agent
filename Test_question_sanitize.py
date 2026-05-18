@@ -1,17 +1,18 @@
 """
-Tests/test_question_sanitizer_dynamique.py
-==========================================
+tests/test_question_sanitizer_dynamic.py
+========================================
 
-Tests robustes du sanitizer FDT.
+Validation avancée et aléatoire du question_sanitizer FDT.
 
-Objectifs :
-- couvrir les cas RH, finance, projet, client, email, matricule
-- éviter la répétition excessive des mêmes questions
-- comparer ACTUAL vs EXPECTED
-- produire un score de validation crédible
+Principe :
+- Génère une banque large de questions métier.
+- Exécute 10 rounds de test.
+- Chaque round sélectionne 20 questions aléatoires.
+- Compare expected_preview vs actual_preview.
+- Produit un score global de robustesse.
 
 Usage :
-    py -m Tests.test_question_sanitizer_dynamique
+    py -m tests.test_question_sanitizer_dynamic
 """
 
 from __future__ import annotations
@@ -20,6 +21,23 @@ import random
 from dataclasses import dataclass
 
 from agent.question_sanitizer import sanitize_question
+
+# ────────────────────────────────────────────────────────────────────
+# Couleurs console
+# ────────────────────────────────────────────────────────────────────
+
+RESET = "\033[0m"
+BOLD = "\033[1m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+CYAN = "\033[96m"
+GRAY = "\033[90m"
+
+ROUNDS = 10
+QUESTIONS_PER_ROUND = 20
+RANDOM_SEED = None  # mettre 42 pour rendre les tests reproductibles
 
 
 @dataclass(frozen=True)
@@ -36,297 +54,486 @@ PERSONS = [
     "Ahmed Salah",
     "Jean Dupont",
     "Sarah Martin",
+    "Émilie Gagnon",
+    "Anthony Collins",
+    "Michael Brown",
+    "John Doe",
 ]
 
 PROJECTS = [
     "Alpha",
+    "Atlas",
     "Fusion-2026",
     "PRJ-00329",
+    "PRJ-00648",
     "PRJ-00987",
+    "PRJ-12345",
 ]
 
 CLIENTS = [
     "Airbus Defense",
     "Orange Business",
     "Total Energy",
+    "Société Générale",
+    "Renault Digital",
+]
+
+TASKS = [
+    "Estimation",
+    "Inspection & préparation du site",
+    "Préparation du plancher",
+    "Application apprêt",
+]
+
+CATEGORIES = [
+    "Operateur",
+    "Gestionnaire de projet",
+    "Support",
+    "Design",
+    "Maladie",
+]
+
+ROLES = [
+    "Software Engineer",
+    "Project manager",
+    "Product Owner",
+    "Membre d'équipe",
+]
+
+LOCATIONS = [
+    "Québec",
+    "Centre Commercial Mapleview",
+    "Centre Administratif Riverstone",
+    "Bastien & Fils",
 ]
 
 AMOUNTS = [
     "15000 EUR",
     "50 000 €",
     "1 250 000 EUR",
+    "25 000 USD",
+    "12 500 MAD",
 ]
 
 EMAILS = [
     "mohamed.benali@company.com",
     "jean.dupont@company.com",
+    "sarah.martin@company.com",
 ]
 
 EMPLOYEE_IDS = [
     "EMP-458921",
     "RH-00987",
+    "MAT-00329",
+]
+
+RESOURCE_IDS = [
+    "RES-2936",
+    "RES-3697",
+    "RES-2958",
+    "RES-3145",
+]
+
+TIMESHEETS = [
+    "TS-0000021",
+    "TS-0000036",
+    "TS-0000259",
 ]
 
 
-# ── Cas déterministes importants ───────────────────────────────────
+def color(text: str, color_code: str) -> str:
+    return f"{color_code}{text}{RESET}"
 
-FIXED_CASES = [
-    TestCase(
-        name="employee_hours_named_person",
-        question="Combien d’heures a travaillé Mohamed Ben Ali en janvier ?",
-        expected_preview="Combien d’heures a travaillé [PERSON] en janvier ?",
-        expected_category="heures",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="salary_named_person",
-        question="Quel est le salaire de Jean Dupont ?",
-        expected_preview="Quel est le salaire de [PERSON] ?",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="absence_named_person",
-        question="Pourquoi Ahmed Salah était absent la semaine dernière ?",
-        expected_preview="Pourquoi [PERSON] était absent la semaine dernière ?",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="project_amount_named_project",
-        question="Quel est le coût total de 15000 EUR du projet Alpha ?",
-        expected_preview="Quel est le coût total de [MONTANT] du projet [PROJECT] ?",
-        expected_category="finance",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="project_code_tasks",
-        question="Quelles tâches ont été réalisées sur le projet PRJ-00329 ?",
-        expected_preview="Quelles tâches ont été réalisées sur le projet [PROJECT] ?",
-        expected_category="tache",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="consultants_client",
-        question="Quels consultants travaillent chez le client Airbus Defense ?",
-        expected_preview="Quels consultants travaillent chez le client [CLIENT] ?",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="client_revenue",
-        question="Montre les revenus générés pour le client Orange Business.",
-        expected_preview="Montre les revenus générés pour le client [CLIENT].",
-        expected_category="finance",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="email_assignment",
-        question="Quels projets sont assignés à mohamed.benali@company.com ?",
-        expected_preview="Quels projets sont assignés à [EMAIL] ?",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="employee_id_hours",
-        question="Combien d’heures a travaillé EMP-458921 ?",
-        expected_preview="Combien d’heures a travaillé [MATRICULE] ?",
-        expected_category="heures",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="large_amount_budget",
-        question="Quels projets dépassent 1 250 000 € de budget ?",
-        expected_preview="Quels projets dépassent [MONTANT] de budget ?",
-        expected_category="finance",
-        expected_pii=True,
-    ),
-    TestCase(
-        name="no_pii_generic_project",
-        question="Quel est le meilleur projet en 2026 ?",
-        expected_preview="Quel est le meilleur projet en 2026 ?",
-        expected_category="projet",
-        expected_pii=False,
-    ),
-    TestCase(
-        name="no_pii_conversation",
-        question="Bonjour, présentez vous.",
-        expected_preview="Bonjour, présentez vous.",
-        expected_category="conversationnel",
-        expected_pii=False,
-    ),
-    TestCase(
-        name="long_mixed_sensitive_question",
-        question=(
-            "Pouvez-vous me montrer le détail complet des heures travaillées par "
-            "Mohamed Ben Ali sur le projet PRJ-00329 entre janvier 2025 et mars 2026 "
-            "avec les coûts supérieurs à 15 000 EUR et les informations client "
-            "Airbus Defense afin d’analyser la rentabilité globale ?"
-        ),
-        expected_preview=(
-            "Pouvez-vous me montrer le détail complet des heures travaillées par "
-            "[PERSON] sur le projet [PROJECT] entre janvier 2025 et mars 2026 "
-            "avec les coûts supérieurs à [MONTANT] et les informations client "
-            "[CLIENT] afin d’analyser la rentabilité globale ?"
-        ),
-        expected_category="heures",
-        expected_pii=True,
-    ),
-]
+def separator(char: str = "=", size: int = 100) -> str:
+    return char * size
 
 
-# ── Templates dynamiques, max 2 variations chacun ──────────────────
-
-DYNAMIC_TEMPLATES = [
-    {
-        "name": "dynamic_employee_hours",
-        "max_variations": 2,
-        "builder": lambda: TestCase(
-            name="dynamic_employee_hours",
-            question=f"Combien d’heures a travaillé {random.choice(PERSONS)} en janvier ?",
-            expected_preview="Combien d’heures a travaillé [PERSON] en janvier ?",
-            expected_category="heures",
-            expected_pii=True,
-        ),
-    },
-    {
-        "name": "dynamic_salary",
-        "max_variations": 2,
-        "builder": lambda: TestCase(
-            name="dynamic_salary",
-            question=f"Quel est le salaire de {random.choice(PERSONS)} ?",
-            expected_preview="Quel est le salaire de [PERSON] ?",
-            expected_pii=True,
-        ),
-    },
-    {
-        "name": "dynamic_project_cost",
-        "max_variations": 2,
-        "builder": lambda: TestCase(
-            name="dynamic_project_cost",
-            question=f"Quel est le coût total de {random.choice(AMOUNTS)} du projet {random.choice(PROJECTS)} ?",
-            expected_preview="Quel est le coût total de [MONTANT] du projet [PROJECT] ?",
-            expected_category="finance",
-            expected_pii=True,
-        ),
-    },
-    {
-        "name": "dynamic_client_consultants",
-        "max_variations": 2,
-        "builder": lambda: TestCase(
-            name="dynamic_client_consultants",
-            question=f"Quels consultants travaillent chez le client {random.choice(CLIENTS)} ?",
-            expected_preview="Quels consultants travaillent chez le client [CLIENT] ?",
-            expected_pii=True,
-        ),
-    },
-    {
-        "name": "dynamic_email",
-        "max_variations": 2,
-        "builder": lambda: TestCase(
-            name="dynamic_email",
-            question=f"Quels projets sont assignés à {random.choice(EMAILS)} ?",
-            expected_preview="Quels projets sont assignés à [EMAIL] ?",
-            expected_pii=True,
-        ),
-    },
-    {
-        "name": "dynamic_employee_id",
-        "max_variations": 2,
-        "builder": lambda: TestCase(
-            name="dynamic_employee_id",
-            question=f"Combien d’heures a travaillé {random.choice(EMPLOYEE_IDS)} ?",
-            expected_preview="Combien d’heures a travaillé [MATRICULE] ?",
-            expected_category="heures",
-            expected_pii=True,
-        ),
-    },
-]
-
-
-def build_dynamic_cases() -> list[TestCase]:
+def build_question_bank() -> list[TestCase]:
     cases: list[TestCase] = []
-    seen_questions: set[str] = set()
 
-    for template in DYNAMIC_TEMPLATES:
-        attempts = 0
-        added = 0
+    # ── Employés / RH ──────────────────────────────────────────────
+    for person in PERSONS:
+        cases.extend([
+            TestCase(
+                "employee_hours",
+                f"Combien d’heures a travaillé {person} en janvier ?",
+                "Combien d’heures a travaillé [PERSON] en janvier ?",
+                "heures",
+                True,
+            ),
+            TestCase(
+                "employee_salary",
+                f"Quel est le salaire de {person} ?",
+                "Quel est le salaire de [PERSON] ?",
+                None,
+                True,
+            ),
+            TestCase(
+                "employee_absence",
+                f"Pourquoi {person} était absent la semaine dernière ?",
+                "Pourquoi [PERSON] était absent la semaine dernière ?",
+                None,
+                True,
+            ),
+            TestCase(
+                "employee_project_work",
+                f"Est-ce que {person} a travaillé sur le projet Alpha en décembre 2025 ?",
+                "Est-ce que [PERSON] a travaillé sur le projet [PROJECT] en décembre 2025 ?",
+                "heures",
+                True,
+            ),
+        ])
 
-        while added < template["max_variations"] and attempts < 20:
-            attempts += 1
-            case = template["builder"]()
+    # ── Projets ────────────────────────────────────────────────────
+    for project in PROJECTS:
+        cases.extend([
+            TestCase(
+                "project_cost",
+                f"Quel est le coût total de {random.choice(AMOUNTS)} du projet {project} ?",
+                "Quel est le coût total de [MONTANT] du projet [PROJECT] ?",
+                "finance",
+                True,
+            ),
+            TestCase(
+                "project_tasks",
+                f"Quelles tâches ont été réalisées sur le projet {project} ?",
+                "Quelles tâches ont été réalisées sur le projet [PROJECT] ?",
+                "tache",
+                True,
+            ),
+            TestCase(
+                "project_time",
+                f"Quel est le total des heures sur le projet {project} ?",
+                "Quel est le total des heures sur le projet [PROJECT] ?",
+                "heures",
+                True,
+            ),
+        ])
 
-            if case.question in seen_questions:
-                continue
+    # ── Clients ────────────────────────────────────────────────────
+    for client in CLIENTS:
+        cases.extend([
+            TestCase(
+                "client_consultants",
+                f"Quels consultants travaillent chez le client {client} ?",
+                "Quels consultants travaillent chez le client [CLIENT] ?",
+                None,
+                True,
+            ),
+            TestCase(
+                "client_revenue",
+                f"Montre les revenus générés pour le client {client}.",
+                "Montre les revenus générés pour le client [CLIENT].",
+                "finance",
+                True,
+            ),
+            TestCase(
+                "client_projects",
+                f"Quels projets sont liés au client {client} ?",
+                "Quels projets sont liés au client [CLIENT] ?",
+                "projet",
+                True,
+            ),
+        ])
 
-            seen_questions.add(case.question)
-            cases.append(case)
-            added += 1
+    # ── Tâches ─────────────────────────────────────────────────────
+    for task in TASKS:
+        cases.extend([
+            TestCase(
+                "task_hours",
+                f"Combien d’heures ont été saisies sur la tâche {task} ?",
+                "Combien d’heures ont été saisies sur la tâche [TASK] ?",
+                "heures",
+                True,
+            ),
+            TestCase(
+                "task_employee",
+                f"Qui a travaillé sur la tâche {task} ?",
+                "Qui a travaillé sur la tâche [TASK] ?",
+                "tache",
+                True,
+            ),
+        ])
 
-    return cases
+    # ── Catégories ─────────────────────────────────────────────────
+    for category in CATEGORIES:
+        cases.append(
+            TestCase(
+                "category_hours",
+                f"Combien d’heures ont été enregistrées dans la catégorie {category} ?",
+                "Combien d’heures ont été enregistrées dans la catégorie [CATEGORY] ?",
+                "heures",
+                True,
+            )
+        )
+
+    # ── Rôles ──────────────────────────────────────────────────────
+    for role in ROLES:
+        cases.append(
+            TestCase(
+                "role_hours",
+                f"Quels {role} ont travaillé plus de 40 heures ?",
+                "Quels [ROLE] ont travaillé plus de 40 heures ?",
+                "heures",
+                True,
+            )
+        )
+
+    # ── Locations ──────────────────────────────────────────────────
+    for location in LOCATIONS:
+        cases.append(
+            TestCase(
+                "location_tasks",
+                f"Quelles tâches ont été réalisées à {location} ?",
+                "Quelles tâches ont été réalisées à [LOCATION] ?",
+                "tache",
+                True,
+            )
+        )
+
+    # ── Emails ─────────────────────────────────────────────────────
+    for email in EMAILS:
+        cases.append(
+            TestCase(
+                "email_assignment",
+                f"Quels projets sont assignés à {email} ?",
+                "Quels projets sont assignés à [EMAIL] ?",
+                "projet",
+                True,
+            )
+        )
+
+    # ── Matricules / ressources ────────────────────────────────────
+    for employee_id in EMPLOYEE_IDS:
+        cases.append(
+            TestCase(
+                "employee_id_hours",
+                f"Combien d’heures a travaillé {employee_id} ?",
+                "Combien d’heures a travaillé [MATRICULE] ?",
+                "heures",
+                True,
+            )
+        )
+
+    for resource_id in RESOURCE_IDS:
+        cases.append(
+            TestCase(
+                "resource_id_projects",
+                f"Quels projets sont affectés à la ressource {resource_id} ?",
+                "Quels projets sont affectés à la ressource [RESOURCE_ID] ?",
+                "projet",
+                True,
+            )
+        )
+
+    # ── Timesheets ─────────────────────────────────────────────────
+    for timesheet in TIMESHEETS:
+        cases.extend([
+            TestCase(
+                "timesheet_detail",
+                f"Montre-moi le détail de la feuille de temps {timesheet}.",
+                "Montre-moi le détail de la feuille de temps [TIMESHEET].",
+                "heures",
+                True,
+            ),
+            TestCase(
+                "timesheet_status",
+                f"Quel est le statut de la timesheet {timesheet} ?",
+                "Quel est le statut de la timesheet [TIMESHEET] ?",
+                "validation",
+                True,
+            ),
+        ])
+
+    # ── Cas mixtes avancés ─────────────────────────────────────────
+    for _ in range(20):
+        person = random.choice(PERSONS)
+        project = random.choice(PROJECTS)
+        client = random.choice(CLIENTS)
+        task = random.choice(TASKS)
+        amount = random.choice(AMOUNTS)
+        timesheet = random.choice(TIMESHEETS)
+
+        cases.extend([
+            TestCase(
+                "mixed_person_project_client",
+                (
+                    f"Combien d’heures {person} a-t-il passé sur le projet {project} "
+                    f"pour le client {client} ?"
+                ),
+                (
+                    "Combien d’heures [PERSON] a-t-il passé sur le projet [PROJECT] "
+                    "pour le client [CLIENT] ?"
+                ),
+                "heures",
+                True,
+            ),
+            TestCase(
+                "mixed_task_timesheet_project",
+                (
+                    f"Dans la feuille {timesheet}, quelles heures sont liées à la tâche "
+                    f"{task} sur le projet {project} ?"
+                ),
+                (
+                    "Dans la feuille [TIMESHEET], quelles heures sont liées à la tâche "
+                    "[TASK] sur le projet [PROJECT] ?"
+                ),
+                "heures",
+                True,
+            ),
+            TestCase(
+                "mixed_finance_project_client",
+                (
+                    f"Quel est le coût total de {amount} du projet {project} "
+                    f"pour le client {client} ?"
+                ),
+                (
+                    "Quel est le coût total de [MONTANT] du projet [PROJECT] "
+                    "pour le client [CLIENT] ?"
+                ),
+                "finance",
+                True,
+            ),
+        ])
+
+    # ── Cas non sensibles / faux positifs ──────────────────────────
+    cases.extend([
+        TestCase(
+            "generic_best_project",
+            "Quel est le meilleur projet en 2026 ?",
+            "Quel est le meilleur projet en 2026 ?",
+            "projet",
+            False,
+        ),
+        TestCase(
+            "generic_project_time",
+            "Quels projets ont pris le plus de temps ?",
+            "Quels projets ont pris le plus de temps ?",
+            "projet",
+            False,
+        ),
+        TestCase(
+            "generic_average_cost",
+            "Quel est le coût moyen par projet ?",
+            "Quel est le coût moyen par projet ?",
+            "finance",
+            False,
+        ),
+        TestCase(
+            "conversation_hello",
+            "Bonjour, présentez vous.",
+            "Bonjour, présentez vous.",
+            "conversationnel",
+            False,
+        ),
+        TestCase(
+            "conversation_thanks",
+            "Merci beaucoup pour votre aide.",
+            "Merci beaucoup pour votre aide.",
+            "conversationnel",
+            False,
+        ),
+    ])
+
+    return list({case.question: case for case in cases}.values())
+
+
+def select_round_cases(bank: list[TestCase]) -> list[TestCase]:
+    return random.sample(bank, min(QUESTIONS_PER_ROUND, len(bank)))
+
+
+def evaluate_case(case: TestCase):
+    result = sanitize_question(case.question, truncate=False)
+
+    errors: list[str] = []
+
+    if result.preview != case.expected_preview:
+        errors.append("preview")
+
+    if case.expected_category is not None and result.category != case.expected_category:
+        errors.append("category")
+
+    if case.expected_pii is not None and result.pii_detected != case.expected_pii:
+        errors.append("pii_detected")
+
+    return not errors, errors, result
 
 
 def run_tests() -> None:
-    cases = FIXED_CASES + build_dynamic_cases()
+    if RANDOM_SEED is not None:
+        random.seed(RANDOM_SEED)
 
-    passed = 0
-    failed = 0
+    bank = build_question_bank()
+
+    total_passed = 0
+    total_failed = 0
 
     print("=" * 100)
-    print("FDT QUESTION SANITIZER — STRONG VALIDATION SUITE")
+    print("FDT QUESTION SANITIZER — ADVANCED RANDOM MULTI-ROUND VALIDATION")
+    print("=" * 100)
+    print(f"Question bank size : {len(bank)}")
+    print(f"Rounds             : {ROUNDS}")
+    print(f"Questions / round  : {QUESTIONS_PER_ROUND}")
     print("=" * 100)
 
-    for idx, case in enumerate(cases, start=1):
-        result = sanitize_question(case.question, truncate=False)
+    for round_idx in range(1, ROUNDS + 1):
+        round_cases = select_round_cases(bank)
+        round_passed = 0
+        round_failed = 0
 
-        errors: list[str] = []
-
-        if result.preview != case.expected_preview:
-            errors.append("preview")
-
-        if case.expected_category is not None and result.category != case.expected_category:
-            errors.append("category")
-
-        if case.expected_pii is not None and result.pii_detected != case.expected_pii:
-            errors.append("pii_detected")
-
-        success = not errors
-
-        if success:
-            passed += 1
-            status = "PASS"
-        else:
-            failed += 1
-            status = "FAIL"
-
-        print(f"\n[{status}] {idx}. {case.name}")
+        print(f"\nROUND {round_idx}/{ROUNDS}")
         print("-" * 100)
-        print("QUESTION:")
-        print(case.question)
 
-        print("\nEXPECTED:")
-        print(case.expected_preview)
+        for idx, case in enumerate(round_cases, start=1):
+            success, errors, result = evaluate_case(case)
 
-        print("\nACTUAL:")
-        print(result.preview)
+            if success:
+                round_passed += 1
+                total_passed += 1
+                continue
 
-        print("\nMETADATA:")
-        print(f"expected_category : {case.expected_category}")
-        print(f"actual_category   : {result.category}")
-        print(f"expected_pii      : {case.expected_pii}")
-        print(f"actual_pii        : {result.pii_detected}")
+            round_failed += 1
+            total_failed += 1
 
-        if errors:
-            print("\nERRORS:")
+            print(color(f"\n[FAIL] {idx}. {case.name}", RED + BOLD))
+            print(color(separator("-", 100), GRAY))
+
+            print(color("QUESTION:", BLUE))
+            print(case.question)
+
+            print(color("\nEXPECTED:", GREEN))
+            print(case.expected_preview)
+
+            print(color("\nACTUAL:", RED))
+            print(result.preview)
+
+            print(color("\nMETADATA:", CYAN))
+            print(f"expected_category : {case.expected_category}")
+            print(f"actual_category   : {result.category}")
+            print(f"expected_pii      : {case.expected_pii}")
+            print(f"actual_pii        : {result.pii_detected}")
+
+            print(color("\nERRORS:", YELLOW))
             print(", ".join(errors))
 
-        print("=" * 100)
+            print(color(separator("-", 100), GRAY))
+        round_total = len(round_cases)
+        round_accuracy = (round_passed / round_total) * 100 if round_total else 0
 
-    total = len(cases)
-    accuracy = (passed / total) * 100 if total else 0
+        print(
+            f"\nRound result: {round_passed}/{round_total} "
+            f"({round_accuracy:.2f}%)"
+        )
+
+    total = total_passed + total_failed
+    global_accuracy = (total_passed / total) * 100 if total else 0
 
     print("\nFINAL RESULTS")
     print("=" * 100)
-    print(f"Total    : {total}")
-    print(f"Passed   : {passed}")
-    print(f"Failed   : {failed}")
-    print(f"Accuracy : {accuracy:.2f}%")
+    print(f"Total tested : {total}")
+    print(f"Passed       : {total_passed}")
+    print(f"Failed       : {total_failed}")
+    print(f"Accuracy     : {global_accuracy:.2f}%")
     print("=" * 100)
 
 
