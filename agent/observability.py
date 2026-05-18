@@ -132,7 +132,13 @@ SAFE_TELEMETRY_EXACT_KEYS = {
     "model_name",
     "agent_name",
     "operation.cost",
-    "table_name"
+    "table_name",
+
+    # Inputs question sanitization fields
+    "question_hash",
+    "question_preview",
+    "question_category",
+    "question_pii_detected",
 }
 
 # ── Scrubbing callback  : intercepter les données sensibles avant de les envoyer à Logfire ────
