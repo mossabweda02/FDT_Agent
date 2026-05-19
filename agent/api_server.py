@@ -14,12 +14,25 @@ Usage :
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+import logfire
+
+from agent.observability import (
+    configure_observability,
+    instrument_fastapi_app,
+    instrument_pydantic_ai,
+)
+configure_observability()
+instrument_pydantic_ai()
 
 # from agent.fdt_agent import ask
 from agent.pydantic_agent import agent as pydantic_agent
 from core.training_examples import get_all_examples
 
+
 app = FastAPI(title="FDT Agent API", version="1.1.0")
+
+# Instrument fastapi (application web) 
+instrument_fastapi_app(app)
 
 # communication de l'interface React avec l'API
 app.add_middleware(
@@ -159,6 +172,31 @@ def _get_contextual_suggestions(user_question: str, n: int = 3) -> list[str]:
 
     return results[:n]
 
+# ──── API pour tester le scrubbing des données sensibles ────
+@app.get("/test-scrubbing")
+async def test_scrubbing():
+    
+    logfire.info("SCRUB TEST ACTIVE")
+    with logfire.span(
+        "test fdt scrubbing",
+        employee_name="Mohamed Ben Ali",
+        PERSONNELNUMBER="EMP-458921",
+        WORKER="123456",
+        StandardCost=1000.0,
+        TotalSalePrice=1500.0,
+        TotalAmountCompanyCur=300.0,
+        question_preview="Combien d’heures a travaillé [PERSON] ?",
+        question_hash="abc123",
+        question_category="heures",
+        question_pii_detected=True,
+        model_name="gpt-4.1-nano",
+        table_name="timesheet_line",
+        row_count=5,
+        operation_cost=0.002,
+    ):
+        pass
+
+    return {"status": "ok"}
 
 # ── Health check ───────────────────────────────────────────────────
 @app.get("/health")
