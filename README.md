@@ -9,6 +9,7 @@ Les principales fonctionnalités incluent :
 - **Requêtage en Langage Naturel** : Traduit les questions complexes en requêtes T-SQL précises.
 - **Validation SQL Sécurisée** : Applique strictement un accès en lecture seule (en bloquant les opérations DML telles que INSERT/UPDATE/DELETE).
 - **Architecture Moderne** : Utilise FastAPI pour un backend hautement performant, Pydantic AI pour la logique de l'agent, et un frontend dynamique en React/Vite.
+- **Observabilité et Sécurité** : Intègre Logfire et OpenTelemetry avec un masquage (scrubbing) robuste des données sensibles (PII, secrets), visualisé localement via Aspire Dashboard.
 
 ## Pour Commencer (Getting Started)
 Suivez ces étapes pour lancer l'Agent FDT sur votre environnement de développement local.
@@ -19,6 +20,7 @@ Assurez-vous que les éléments suivants sont installés sur votre système :
 - **Node.js 18+**
 - **ODBC Driver 18 for SQL Server** (Requis pour la connexion à Azure Synapse)
 - **Azure CLI** (`az login` est requis pour s'authentifier via `DefaultAzureCredential`)
+- **Docker** (Requis pour exécuter l'Aspire Dashboard pour l'observabilité)
 
 ### Processus d'Installation
 1. **Clonez le dépôt :**
@@ -61,6 +63,7 @@ Le backend expose un serveur FastAPI avec les endpoints principaux suivants :
 - `POST /ask` : Accepte une question de l'utilisateur et renvoie la réponse de l'agent IA.
 - `POST /suggest` : Analyse le contexte et renvoie 3 suggestions de questions de suivi.
 - `GET /health` : Renvoie le statut de l'API.
+- `GET /test-scrubbing` : Endpoint de test pour vérifier le masquage des données sensibles dans les logs.
 
 Vous pouvez accéder à la documentation interactive de l'API (Swagger UI) à l'adresse `http://localhost:8000/docs` lorsque le backend est en cours d'exécution.
 
@@ -81,6 +84,14 @@ uvicorn agent.api_server:app --port 8000 --reload
 npm run dev
 ```
 L'application sera accessible à l'adresse `http://localhost:5173`.
+
+**3. Démarrer l'Observabilité (Aspire Dashboard) :**
+Pour visualiser les traces et les logs en local avec le masquage des données activé :
+```bash
+# Dans un nouveau terminal
+docker run --rm -it -p 18888:18888 -p 4317:18889 -p 4318:18890 -e ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true --name aspire-dashboard mcr.microsoft.com/dotnet/aspire-dashboard:latest
+```
+Le tableau de bord sera accessible à l'adresse `http://localhost:18888`.
 
 ### Exécution des Tests
 Le projet inclut une suite de tests robuste qui valide la logique de l'agent en comparant ses réponses avec des requêtes SQL directes à la base de données Synapse.
