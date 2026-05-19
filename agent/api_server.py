@@ -14,6 +14,7 @@ Usage :
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+import logfire
 
 from agent.observability import (
     configure_observability,
@@ -174,22 +175,26 @@ def _get_contextual_suggestions(user_question: str, n: int = 3) -> list[str]:
 # ──── API pour tester le scrubbing des données sensibles ────
 @app.get("/test-scrubbing")
 async def test_scrubbing():
-    import logfire
-
-    logfire.info(
+    
+    logfire.info("SCRUB TEST ACTIVE")
+    with logfire.span(
         "test fdt scrubbing",
         employee_name="Mohamed Ben Ali",
-        resource_name="Mohamed Ben Ali",
-        NAME="Mohamed Ben Ali",
         PERSONNELNUMBER="EMP-458921",
         WORKER="123456",
         StandardCost=1000.0,
         TotalSalePrice=1500.0,
         TotalAmountCompanyCur=300.0,
+        question_preview="Combien d’heures a travaillé [PERSON] ?",
+        question_hash="abc123",
+        question_category="heures",
+        question_pii_detected=True,
+        model_name="gpt-4.1-nano",
         table_name="timesheet_line",
         row_count=5,
-        model_name="gpt-4.1-nano",
-    )
+        operation_cost=0.002,
+    ):
+        pass
 
     return {"status": "ok"}
 
