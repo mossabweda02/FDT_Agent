@@ -6,15 +6,17 @@ Configuration centralisée de l'observabilité du FDT Agent.
 Contient :
   - Configuration Logfire locale
   - Export OpenTelemetry vers Aspire Dashboard
-  - Scrubbing des données sensibles
+  - Scrubbing des données sensibles (couche statique)
   - Protection des arguments FastAPI
   - Instrumentation Pydantic AI
   - Instrumentation FastAPI
+
 """
 
 from __future__ import annotations
 
 import os
+import logging
 from typing import Any
 
 import logfire
@@ -28,17 +30,31 @@ os.environ["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = "http://localhost:4318/v1/tra
 #   UI Web    : http://localhost:18888
 os.environ["OTEL_EXPORTER_OTLP_PROTOCOL"] = "http/protobuf"
 
-# ── Patterns sensibles FDT ─────────────────────────────────────────
-FDT_SENSITIVE_PATTERNS = [
-    # Payload utilisateur / contenu conversationnel
-    r"fastapi\.arguments\.values",
-    r"(^|[._-])question($|[._-])",
-    r"(^|[._-])prompt($|[._-])",
-    r"(^|[._-])completion($|[._-])",
-    r"(^|[._-])response($|[._-])",
 
-    # Données employés / ressources RH
-    r"employee",
+# ════════════════════════════════════════════════════════════════════
+# PATTERNS SENSIBLES FDT
+# ════════════════════════════════════════════════════════════════════
+#
+#   La défense en profondeur repose sur TROIS couches :
+#     1. Ces patterns (clés d'attributs OTel sensibles)
+#     2. Le callback fdt_scrub_callback (allowlists safe paths : nous permettent de ne pas cacher les variables qu'on veut)
+#     3. request_attributes_mapper (suppression suppression des arguments de la fonction ask_route 
+#        qui contient la question de l'utilisateur et il va le cacher)
+#
+# ════════════════════════════════════════════════════════════════════
+
+FDT_SENSITIVE_PATTERNS = [
+
+    # ── Payload utilisateur / contenu conversationnel ──────────────
+    
+    r"fastapi\.arguments\.values", # cache les arguments de la fonction ask_route 
+    r"(?:^|[._-])question(?:$|[._-])", # cache la question de l'utilisateur
+    r"(?:^|[._-])prompt(?:$|[._-])", # cache le prompt de l'utilisateur
+    r"(?:^|[._-])completion(?:$|[._-])", # cache la completion de l'utilisateur
+    r"(?:^|[._-])response(?:$|[._-])", # cache la réponse de l'agent
+
+    # ── Données employés / ressources RH ──────────────────────────
+    r"employee", 
     r"employe",
     r"employé",
     r"worker",
@@ -51,38 +67,39 @@ FDT_SENSITIVE_PATTERNS = [
     r"workerresponsiblefinancial",
     r"workerresponsiblesales",
 
-    # Noms de personnes
-    # Matche NAME comme clé isolée, sans masquer PROJNAME ou TASKNAME.
-    r"(^|[._-])name($|[._-])",
-    r"(^|[._-])firstname($|[._-])",
+    # ── Noms de personnes ──────────────────────────────────────────
+    r"(?:^|[._-])name(?:$|[._-])",
+    r"(?:^|[._-])firstname(?:$|[._-])",
+    r"(?:^|[._-])lastname(?:$|[._-])",
 
-    # Notes / texte libre potentiellement sensible
+    # ── Notes / texte libre potentiellement sensible ───────────────
+    r"\bdescription\b",
     r"internalnote",
     r"externalnote",
-    r"description",
     r"referencenumber",
 
-    # Coûts / prix / rentabilité / budgets
-    r"cost",
-    r"cout",
-    r"coût",
+    # ── Coûts / prix / rentabilité / budgets ──────────────────────
+    r"\bcost\b",
+    r"\bcout\b",
+    r"\bcoût\b",
     r"saleprice",
     r"totalsaleprice",
     r"standardcost",
     r"totalstandardcost",
     r"realcost",
     r"totalrealcost",
-    r"margin",
-    r"marge",
-    r"profit",
-    r"revenue",
-    r"budget",
-    r"cunsumedbudget",
+    r"\bmargin\b",
+    r"\bmarge\b",
+    r"\bprofit\b",
+    r"\brevenue\b",
+    r"\bbudget\b",
+    r"consumedbudget",       
+    r"cunsumedbudget",       #
     r"contractualbudget",
 
-    # Notes de frais / montants
-    r"amount",
-    r"montant",
+    # ── Notes de frais / montants ──────────────────────────────────
+    r"\bamount\b",
+    r"\bmontant\b",
     r"expcardamount",
     r"totalamount",
     r"totaltaxeamount",
@@ -92,7 +109,7 @@ FDT_SENSITIVE_PATTERNS = [
     r"paymentexchangerate",
     r"exchangeratecompany",
 
-    # Secrets techniques / connexions
+    # ── Secrets techniques / connexions ───────────────────────────
     r"connection_string",
     r"connectionstring",
     r"odbc",
@@ -101,85 +118,155 @@ FDT_SENSITIVE_PATTERNS = [
     r"api_key",
     r"client_secret",
     r"tenant_id",
-    r"token",
-    r"secret",
+    r"(?:^|[._-])token(?:$|[._-])",  # Clé `token` isolée seulement
+    r"\bsecret\b",
+
+    # ── SQL statements  ────────────────────────────────
+    r"(?:^|[._-])sql(?:$|[._-])",
+    r"db\.statement",
+    r"db\.query",
 ]
 
-# ── Namespaces techniques sûrs ─────────────────────────────────────
+
+# ════════════════════════════════════════════════════════════════════
+# ALLOWLISTS — NAMESPACES TECHNIQUES SÛRS
+# ════════════════════════════════════════════════════════════════════
+
 SAFE_TELEMETRY_PATH_PARTS = (
-     # IA / LLM
-    "gen_ai.",
+    # ── IA / LLM ─────────────────────────────────────────────────
+    "gen_ai.", # Autorise tout sauf ce qui est bloqué par instrument_pydantic_ai (gen_ai.request.messages et gen_ai.response.text)
 
-    # Logfire interne
-    "logfire.",
+    # ── Logfire interne ────────────────────────────────────────────
+    "logfire.", # Autorise tout sauf ce qui est bloqué par instrument_pydantic_ai (logfire.request.messages et logfire.response.text)
 
-    # HTTP / réseau
-    "http.",
-    "net.",
+    # ── HTTP / réseau ──────────────────────────────────────────────
+    "http.", # http.url / http.method / http.request.body / http.response.body
+    "net.", # net.peer.* / net.type 
 
-    # FastAPI : route et timing endpoint uniquement, pas les arguments
-    "fastapi.route.",
-    "fastapi.endpoint_function.",
+    # ── FastAPI : route et timing uniquement ───────────────────────
+    "fastapi.route.", # fastapi.route.path → "/ask" (pas les params)
+    "fastapi.endpoint_function.",     # fastapi.endpoint_function.name → nom de la fonction handler
 
-    # Ressource OpenTelemetry
-    "service.",
+    # ── Ressource OpenTelemetry standard ──────────────────────────
+    "service.", 
     "deployment.",
     "telemetry.",
     "process.",
+
+    # ── Erreurs OTel standard ─────────────────────────
+    "error.type", # → "ValueError", "TimeoutError" etc. → utile debugging
+    "exception.type", # → nom de l'exception classe
+
+    # ── Base de données méta-only ─────────────────────
+    "db.system", # → "mssql", "postgresql" → safe
+    "db.name",   # → nom de la base (pas sensible, utile au routing)
+    "db.operation", # → "SELECT", "INSERT" → safe
 )
 
+
+# ════════════════════════════════════════════════════════════════════
+# ALLOWLIST — CLÉS EXACTES TOUJOURS CONSERVÉES
+# ════════════════════════════════════════════════════════════════════
+#
+# Ces clés sont des attributs custom FDT ou des clés OTel exactes
+# qui matchent des patterns sensibles mais dont la valeur est sûre
+#
+# ════════════════════════════════════════════════════════════════════
+
 SAFE_TELEMETRY_EXACT_KEYS = {
+    # ── Méta agent FDT ────────────────────────────────────────────
     "model_name",
     "agent_name",
-    "operation.cost",
     "table_name",
 
-    # Inputs question sanitization fields
+    # ── Coût opération ────────────────────────────────────────────
+    # `operation.cost` matche le pattern `\bcost\b` → whitelisté explicitement.
+    "operation.cost",
+    "operation_cost",
+    "row_count",
+
+    # ── Question sanitization fields ──────────────────────────────
+    # Ces champs contiennent des données déjà anonymisées par question_sanitizer.
+    # La valeur loguée est le preview, jamais la question brute.
     "question_hash",
     "question_preview",
     "question_category",
     "question_pii_detected",
+
+    # ── gen_ai usage ──────────────────────────────────
+    "gen_ai.usage.prompt_tokens", #  →  nombre de tokens dans le prompt
+    "gen_ai.usage.completion_tokens", #  →  nombre de tokens dans la réponse
+    "gen_ai.usage.total_tokens", #  →  nombre total de tokens
+    "gen_ai.usage.input_tokens", #  →  nombre de tokens d'entrée
+    "gen_ai.usage.output_tokens", #  →  nombre de tokens de sortie
+    "gen_ai.response.model", #  →  nom du modèle utilisé
+    "gen_ai.request.model", #  →  nom du modèle utilisé ( pas sensible)
+
+    # ── HTTP métriques ────────────────────────────────
+    "http.response.status_code", # code de reponse http 
+    "http.request.method", # methode http 
+    "http.route", # route http 
+
+    # ── OTel méta ────────────────────────────────────
+    "span.kind", # type de span (requette http ou autre)  →  ex: server,client 
+    "span.name", # nom de la requette http ou autre  → ex : "POST /ask"  ou  "GET /"
 }
 
-# ── Scrubbing callback  : intercepter les données sensibles avant de les envoyer à Logfire ────
-def fdt_scrub_callback(match: logfire.ScrubMatch):
+# transformer les cles et les namespaces en minuscules pour faciliter la comparaison
+SAFE_TELEMETRY_EXACT_KEYS_LOWER = {
+    key.lower() for key in SAFE_TELEMETRY_EXACT_KEYS
+}
+
+SAFE_TELEMETRY_PATH_PARTS_LOWER = tuple(
+    part.lower() for part in SAFE_TELEMETRY_PATH_PARTS
+)
+
+# ════════════════════════════════════════════════════════════════════
+# SCRUBBING CALLBACK
+# ════════════════════════════════════════════════════════════════════
+
+def fdt_scrub_callback(match: logfire.ScrubMatch) -> Any:
     """
-    Décide quoi faire lorsqu'un attribut matche un pattern sensible.
-
-    return None
-        → Logfire masque la valeur.
-
-    return match.value
-        → Logfire garde la valeur.
+    Masque les attributs OTel sensibles sauf ceux explicitement safe.
     """
     path_parts = [str(part) for part in (match.path or [])]
     path = ".".join(path_parts).lower()
     key = path_parts[-1].lower() if path_parts else ""
 
-    # 1. Garder les clés techniques exactes observées.
-    if key in SAFE_TELEMETRY_EXACT_KEYS:
+    if key in SAFE_TELEMETRY_EXACT_KEYS_LOWER:
         return match.value
 
-    # 2. Garder les namespaces techniques sûrs.
-    if any(namespace in path for namespace in SAFE_TELEMETRY_PATH_PARTS):
+    if path in SAFE_TELEMETRY_EXACT_KEYS_LOWER:
         return match.value
 
-    # 3. Tout le reste qui matche un pattern sensible est masqué.
+    if any(path.startswith(namespace) for namespace in SAFE_TELEMETRY_PATH_PARTS_LOWER):
+        return match.value
+
+    # Debbuggage de scrubbing (à utiliser dans la phase de dev)
+    logging.getLogger("fdt.scrubbing").debug(
+        "SCRUBBED | key=%s | path=%s | pattern=%s",
+        key, path, match.pattern_match.group(0) if match.pattern_match else "?"
+    )
     return None
 
-# ── Nettoyage des erreurs de validation FastAPI ────────────────────
+
+# ════════════════════════════════════════════════════════════════════
+# NETTOYAGE DES ERREURS DE VALIDATION FASTAPI
+# ════════════════════════════════════════════════════════════════════
+
 def _safe_validation_errors(errors: list[Any]) -> list[dict[str, Any]]:
     """
     Convertit les erreurs FastAPI/Pydantic en version non sensible.
 
-    On garde :
-      - loc
-      - type
+    Conservé :
+      - loc  → localisation du champ invalide (ex: ["body", "question"])
+      - type → type d'erreur Pydantic (ex: "string_too_short")
 
-    On ne garde pas :
-      - input
-      - message complet avec contenu utilisateur
-      - payload brut
+    Supprimé :
+      - input   → contient la valeur soumise par l'utilisateur
+      - msg     → peut contenir des extraits de la valeur invalide
+      - url     → lien vers doc Pydantic 
+      - ctx     → contexte avec valeurs limites 
     """
     safe_errors: list[dict[str, Any]] = []
 
@@ -197,17 +284,20 @@ def _safe_validation_errors(errors: list[Any]) -> list[dict[str, Any]]:
     return safe_errors
 
 
-# ── Protection des arguments FastAPI ───────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# PROTECTION DES ARGUMENTS FASTAPI
+# ════════════════════════════════════════════════════════════════════
+
 def request_attributes_mapper(
     request: Any,
     attributes: dict[str, Any],
 ) -> dict[str, Any]:
     """
-    Empêche Logfire de stocker fastapi.arguments.values.
+    Supprime les arguments FastAPI sensibles des traces Logfire.
 
-    Sans cette fonction, le span /ask peut contenir : fastapi.arguments.values = {"q": {"question": "..."}}
-
-    Or la question utilisateur peut contenir (nom d'employé, projet, période...)
+    Comportement :
+      - Si pas d'erreurs : retourne {} (aucun attribut du request logué).
+      - Si erreurs de validation : retourne uniquement les méta-erreurs safe.
     """
     errors = attributes.get("errors") or []
 
@@ -220,26 +310,29 @@ def request_attributes_mapper(
     }
 
 
-# ── Configuration Logfire ──────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# CONFIGURATION LOGFIRE
+# ════════════════════════════════════════════════════════════════════
+
 def configure_observability() -> None:
     """
-    Configure Logfire et l'export OpenTelemetry local.
-    
-    Important :
-      send_to_logfire=False empêche tout envoi vers Logfire Cloud.
+    Configure Logfire avec export OTel local uniquement.
     """
     logfire.configure(
         service_name="fdt-agent",
-        service_version="1.1.0",
+        service_version="1.2.0",
         environment="local",
 
-        # Empeche l'envoie des données vers Logfire Cloud.
+        # Isolation cloud absolue.
         send_to_logfire=False,
 
-        # Affichage local dans le terminal backend.
+        
         console=ConsoleOptions(
+            # Affiche les traces des spans dans l'ordre chronologique inverse.
             span_style="show-parents",
+            # Affiche les logs de manière concise.
             verbose=False,
+            # Empêche l'affichage du lien vers le projet Logfire.
             show_project_link=False,
         ),
 
@@ -251,31 +344,34 @@ def configure_observability() -> None:
     )
 
 
-# ── Instrumentation Pydantic AI ────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# INSTRUMENTATION PYDANTIC AI
+# ════════════════════════════════════════════════════════════════════
+
 def instrument_pydantic_ai() -> None:
     """
-    Active l'instrumentation Pydantic AI. 
-    On garde les spans, durées, tokens, modèle et erreurs.
+  Cette fonction Active l'instrumentation Pydantic AI.
+  Permet de ne pas logger les données sensibles des requêtes et des réponses.
     """
     logfire.instrument_pydantic_ai(
         include_content=False,
     )
 
 
-# ── Instrumentation FastAPI ────────────────────────────────────────
+# ════════════════════════════════════════════════════════════════════
+# INSTRUMENTATION FASTAPI
+# ════════════════════════════════════════════════════════════════════
+
 def instrument_fastapi_app(app: FastAPI) -> None:
     """
-    Active l'instrumentation FastAPI.
-
-    request_attributes_mapper :
-      supprime fastapi.arguments.values pour éviter de logger
-      la question utilisateur brute.
-
-    excluded_urls :
-      évite de polluer les traces avec /health ou /metrics.
+    Cette fonction Active l'instrumentation FastAPI.
+    Permet de logger les requêtes et les réponses HTTP.
     """
     logfire.instrument_fastapi(
         app,
+        # Mapper les attributs des requêtes et des réponses.
         request_attributes_mapper=request_attributes_mapper,
+        # Eviter le bruit dans les traces HTTP.
         excluded_urls=".*/health$,.*/metrics$",
     )
+
