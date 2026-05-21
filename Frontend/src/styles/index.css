@@ -1,3 +1,19 @@
+/**
+ * styles/index.css
+ * ─────────────────────────────────────────────────────────────────
+ * Global base styles for the FDT Agent application.
+ *
+ * Scope:
+ *  - CSS custom properties (design tokens) for light & dark themes
+ *  - Root layout constraints (#root, body)
+ *  - Typography scale (h1, h2, p, code)
+ *  - Scrollbar overrides via media queries
+ *
+ * Consumed by: src/main.jsx
+ * Note: App-level overrides live in styles/App.css (injected via GLOBAL_CSS
+ *       inside ChatPage) until a future migration to a proper stylesheet.
+ */
+
 :root {
   --text: #6b6375;
   --text-h: #08060d;
