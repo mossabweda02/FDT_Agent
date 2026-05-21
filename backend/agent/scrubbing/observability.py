@@ -233,6 +233,15 @@ SAFE_TELEMETRY_EXACT_KEYS = {
     "scrubbing_group", # groupe de scrubbing qui a matché (utile pour debug)
     "service.version", # version du service (fdt-agent v1.2.0)
     "deployment.environment.name",  # environnement de déploiement (local, staging, prod)
+
+    # ── Champs de base de données spécifiques ───────────────
+    "APPROVALSTATUS",
+    "approvalstatus",
+    "LINENUM",
+    "linenum",
+    "QTY",
+    "qty",
+
 }
 
 # transformer les cles et les namespaces en minuscules pour faciliter la comparaison
@@ -272,6 +281,7 @@ def fdt_scrub_callback(match: logfire.ScrubMatch) -> Any:
         "SCRUBBED | key=%s | path=%s | pattern=%s",
         key, path, match.pattern_match.group(0) if match.pattern_match else "?"
     )
+    logging.getLogger("fdt.scrubbing").setLevel(logging.DEBUG)
     return None
 
 
