@@ -6,6 +6,9 @@ Ce script de test :
 - récupère la liste des vues disponibles 
 - affiche les métadonnées et un échantillon de donnéespour chaque vue. 
 C'est un test de validation pour s'assurer que les données attendues sont bien présentes et accessibles.
+
+Usage :
+    py -m tests.test_data
 """
 
 import pandas as pd
