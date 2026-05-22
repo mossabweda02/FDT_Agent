@@ -8,4 +8,3 @@ __pycache__/
 .agent_version
 docs/
 scripts/
-tests/
