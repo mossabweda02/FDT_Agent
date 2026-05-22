@@ -1,7 +1,18 @@
 """
-Bloc 1 — Identité, langue et protocole de l'agent.
-Objectif : définir clairement le rôle de l'agent, les règles d'interaction et les limites de son champ de compétence pour garantir 
-des réponses pertinentes et précises.
+Module: backend.core.prompts.role_prompt
+=========================================
+Bloc 1 du prompt système: Identité, langue et protocole de l'agent.
+
+Ce bloc définit:
+  - L'identité de l'agent (expert en feuilles de temps Metam)
+  - Les langues supportées (français et anglais)
+  - Le protocole d'interaction (2 chemins selon complexité)
+  - Les règles absolues de comportement
+  - Le scope (domaines couverts vs hors scope)
+
+Le protocole inclut:
+  - Chemin rapide: 1 table, colonnes connues (2 appels outils)
+  - Chemin complet: jointures complexes, valeurs inconnues (4 appels outils)
 """
 
 ROLE_PROMPT = """

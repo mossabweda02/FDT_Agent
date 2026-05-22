@@ -1,7 +1,21 @@
 """
-Outils SQL exposés à l'agent Azure AI Foundry.
-ce fichier contient la logique de chaque outil défini dans tools_definitions.py, ainsi que le mapping final TOOL_FUNCTIONS utilisé par fdt_agent.py pour 
-exécuter les tool calls.
+Module: tools.functions_tool
+=====================================
+Implémentation des 6 outils SQL exposés à l'agent.
+
+Ce module contient la logique réelle de chacun des 6 outils SQL:
+  1. list_tables()              - Liste toutes les vues Synapse
+  2. get_database_schema()      - Schéma simplifié des tables principales
+  3. get_table_relationships()  - Clés de jointure et requête canonique
+  4. describe_table(table_name) - Colonnes exactes, types, nullabilité
+  5. get_sample_data(table_name)- 5 lignes d'exemple pour inférer format
+  6. execute_query(query)       - Exécution SELECT avec validation
+
+Les outils retournent du JSON string (pas de dict) car le LLM Azure n'interprète
+que les strings JSON, pas les types Python.
+
+Filtrage des colonnes:
+  - META_COLS: Colonnes pipeline (metadata) filtrées de tous les résultats
 """
 
 import json
@@ -9,8 +23,8 @@ import logging
 
 import pandas as pd
 
-from database.connection import get_engine
-from tools.sql_validator import validate_sql_query, sanitize_query_for_logging
+from backend.database.connection import get_engine
+from backend.tools.sql_validator import validate_sql_query, sanitize_query_for_logging
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +32,15 @@ META_COLS = {
     "_run_id", "_source_table", "_load_mode",
     "Deleted", "Deleted_At", "_ingested_at"
 }
-
-
 def _ok(data: dict) -> str:
+    """Sérialise une réponse de succès au format JSON (plus lisible pour le LLM)."""
     return json.dumps(data, ensure_ascii=False, default=str)
 
 
 def _err(msg: str, hint: str = "") -> str:
+    """ Sérialise une réponse d'erreur en JSON string """
     return json.dumps({"error": msg, "hint": hint,
                        "rows": [], "row_count": 0}, ensure_ascii=False)
-
 
 def _read(sql: str) -> pd.DataFrame:
     """Exécute un SELECT via connexion explicite et retourne un DataFrame."""

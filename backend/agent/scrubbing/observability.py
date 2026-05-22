@@ -1,16 +1,32 @@
 """
-agent/observability.py
-======================
+Module: backend.agent.scrubbing.observability
+==============================================
 Configuration centralisée de l'observabilité du FDT Agent.
 
-Contient :
-  - Configuration Logfire locale
-  - Export OpenTelemetry vers Aspire Dashboard
-  - Scrubbing des données sensibles (couche statique)
+Ce module configure:
+  - Logfire locale (sans envoi cloud, console stdout)
+  - Export OpenTelemetry vers Aspire Dashboard (http://localhost:18888)
+  - Scrubbing des données sensibles (3 couches de défense)
   - Protection des arguments FastAPI
-  - Instrumentation Pydantic AI
-  - Instrumentation FastAPI
+  - Instrumentation Pydantic AI (sans contenu)
+  - Instrumentation FastAPI (avec masquage des questions)
 
+Défense en profondeur (3 couches):
+  1. Patterns sensibles (clés d'attributs OTel)
+  2. Callback fdt_scrub_callback (allowlist safe paths)
+  3. request_attributes_mapper (suppression des arguments)
+
+Données masquées:
+  - Questions utilisateur (fastapi.arguments.values)
+  - Prompts système et complétions
+  - Noms, prénoms, adresses
+  - Salaires, coûts, rentabilité
+  - Secrets techniques (clés, tokens)
+
+Données conservées:
+  - Métriques (durées, tokens, count)
+  - Métadonnées techniques (model, service, version)
+  - Erreurs et avertissements (sans contexte sensible)
 """
 
 from __future__ import annotations
@@ -66,6 +82,9 @@ FDT_SENSITIVE_PATTERNS = [
     r"workerresponsible",
     r"workerresponsiblefinancial",
     r"workerresponsiblesales",
+    r"\bsalary\b",
+    r"\bsalaire\b",
+    r"\bpayroll\b",
 
     # ── Noms de personnes ──────────────────────────────────────────
     r"(?:^|[._-])name(?:$|[._-])",
@@ -210,6 +229,10 @@ SAFE_TELEMETRY_EXACT_KEYS = {
     # ── OTel méta ────────────────────────────────────
     "span.kind", # type de span (requette http ou autre)  →  ex: server,client 
     "span.name", # nom de la requette http ou autre  → ex : "POST /ask"  ou  "GET /"
+    "service.name", # nom du service (fdt-agent)
+    "scrubbing_group", # groupe de scrubbing qui a matché (utile pour debug)
+    "service.version", # version du service (fdt-agent v1.2.0)
+    "deployment.environment.name",  # environnement de déploiement (local, staging, prod)
 }
 
 # transformer les cles et les namespaces en minuscules pour faciliter la comparaison
@@ -233,9 +256,11 @@ def fdt_scrub_callback(match: logfire.ScrubMatch) -> Any:
     path = ".".join(path_parts).lower()
     key = path_parts[-1].lower() if path_parts else ""
 
+    # 1. Mots clés exacts non sensibles 
     if key in SAFE_TELEMETRY_EXACT_KEYS_LOWER:
         return match.value
 
+    # 2. Chemins de namespaces sûrs 
     if path in SAFE_TELEMETRY_EXACT_KEYS_LOWER:
         return match.value
 

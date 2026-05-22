@@ -26,12 +26,13 @@ from azure.ai.agents.aio import AgentsClient
 from azure.identity.aio import DefaultAzureCredential
 
 # ── Forcer le rechargement des modules (évite le cache Python) ────
-import core.prompts.role_prompt
-import core.prompts.schema_prompt
-import core.prompts.rules_prompt
-import core.prompts.system_prompt
-import core.prompts.tools_definitions
-import core.training_examples
+from backend import core
+import backend.core.prompts.role_prompt
+import backend.core.prompts.schema_prompt
+import backend.core.prompts.rules_prompt
+import backend.core.prompts.system_prompt
+import backend.core.prompts.tools_definitions
+import backend.core.training_examples
 
 for mod in [
     core.training_examples,
@@ -43,8 +44,8 @@ for mod in [
 ]:
     importlib.reload(mod)
 
-from core.prompts.system_prompt    import build_system_prompt
-from core.prompts.tools_definitions import TOOLS_DEFINITIONS
+from backend.core.prompts.system_prompt    import build_system_prompt
+from backend.core.prompts.tools_definitions import TOOLS_DEFINITIONS
 
 load_dotenv()
 
@@ -58,7 +59,7 @@ AGENT_ID = os.environ["AGENT_ID"]
 ENDPOINT = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
 
 # ── Versioning ────────────────────────────────────────────────────
-AGENT_BASE_NAME = "FDT-Agent"   # Nom du agent sans la version, utilisé pour construire le nom final
+AGENT_BASE_NAME = "FDT-Agent"   # Nom du agent sans la version
 CURRENT_VERSION = "v1.1"          # Version actuelle, à incrémenter manuellement à chaque changement significatif
 
 HASH_FILE    = ".prompt_hash" # Fichier local pour stocker le hash du prompt envoyé à Azure

@@ -64,11 +64,12 @@ GENERIC_BUSINESS_WORDS = {
 # ────────────────────────────────────────────────────────────────────
 # Modèle résultat sanitization
 # ────────────────────────────────────────────────────────────────────
+# classe de retour de sanitize_question, avec hash, preview anonymisée, catégorie métier, et indicateur de PII détecté.
 
 @dataclass
 class SanitizedQuestion:
     hash: str             # sha256[:12] — identifiant unique stable
-    preview: str          # question avec PII remplacés par placeholders
+    preview: str          # question avec PII (Personally Identifiable Information) remplacés par placeholders
     category: str         # catégorie métier détectée
     pii_detected: bool    # True si au moins un pattern PII a matché
 
@@ -76,11 +77,13 @@ class SanitizedQuestion:
 # Regex de base
 # ────────────────────────────────────────────────────────────────────
 
+# Pattern regex pour détecter les emails
 EMAIL_RE = re.compile(
     r"\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b",
     re.IGNORECASE,
 )
 
+# Pattern regex pour détecter les montants
 AMOUNT_RE = re.compile(
     r"""
     (?:
@@ -101,6 +104,7 @@ AMOUNT_RE = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
+# Pattern regex pour détecter les numéros de téléphone
 PHONE_RE = re.compile(
     r"""
     (?:
@@ -113,11 +117,13 @@ PHONE_RE = re.compile(
     re.VERBOSE,
 )
 
+# Pattern regex pour détecter les identifiants employés 
 EMPLOYEE_ID_RE = re.compile(
     r"\b(?:EMP|RH|MAT|RES)-?\d{3,}\b",
     re.IGNORECASE,
 )
 
+# Pattern regex pour détecter les codes projets
 PROJECT_CODE_RE = re.compile(
     r"\bPRJ-?\d{3,}\b",
     re.IGNORECASE,
@@ -126,7 +132,7 @@ PROJECT_CODE_RE = re.compile(
 # ────────────────────────────────────────────────────────────────────
 # Regex contextuelles
 # ────────────────────────────────────────────────────────────────────
-
+# Pattern regex pour détecter les noms de projets mentionnés explicitement ("projet X", "project Y")
 PROJECT_NAMED_RE = re.compile(
     r"""
     \b
@@ -137,6 +143,7 @@ PROJECT_NAMED_RE = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
+# Pattern regex pour détecter les noms de clients mentionnés explicitement ("client X", "client chez Y", "client du projet Z")
 CLIENT_NAMED_RE = re.compile(
     r"""
     \b
@@ -157,6 +164,7 @@ CLIENT_NAMED_RE = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 
+# Pattern regex pour détecter les noms de personnes mentionnés après un contexte métier ("salaire de X", "a travaillé avec Y")
 PERSON_AFTER_CONTEXT_RE = re.compile(
     r"""
     \b(?P<context>
@@ -181,10 +189,16 @@ PERSON_AFTER_CONTEXT_RE = re.compile(
         (?:\s+
         [A-ZÀÂÉÈÊËÎÏÔÙÛÜÇ][a-zàâéèêëîïôùûüç]+)+
     )
+    (?=
+        \s+(?:en|sur|chez|du|de|pour|avec|entre|à|au|aux)\b
+        |[?.!,]
+        |$
+    )
     """,
     re.IGNORECASE | re.VERBOSE,
 )
 
+# Pattern regex pour détecter les noms de personnes mentionnés avant un contexte métier ("X a travaillé sur Y", "Y travaille chez Z avec X")
 PERSON_BEFORE_CONTEXT_RE = re.compile(
     r"""
     (?P<prefix>\b(?:pourquoi|est-ce\s+que|pourquoi\s+est-ce\s+que)?\s*)
@@ -215,6 +229,7 @@ _CATEGORY_PATTERNS: list[tuple[str, str]] = [
     (r"rentabl|marge|profit|coût|cout|cost|budget|revenu|frais|montant", "finance"),
     (r"tâche|task|activit", "tache"),
     (r"employ|ressource|worker|collabor|consultant|équipe|team", "employe"),
+    (r"heure|timesheet|saisie|enregistr", "heures"),
     (r"projet|project|prj", "projet"),
     (r"approuv|valid|statut|status", "validation"),
     (r"top|meilleur|plus|premier|classement|ranking", "analytique"),
@@ -225,12 +240,13 @@ _CATEGORY_PATTERNS: list[tuple[str, str]] = [
 # Helpers
 # ────────────────────────────────────────────────────────────────────
 
+# fonction de hashage de question (identifier les questions similaires sans stocker le texte brut)
 def _hash_question(question: str) -> str:
     return hashlib.sha256(
         question.encode("utf-8")
     ).hexdigest()[:12]
 
-
+# fonction de détection de catégorie
 def _detect_category(question: str) -> str:
     q_lower = question.lower()
 
@@ -240,7 +256,8 @@ def _detect_category(question: str) -> str:
 
     return "autre"
 
-
+# fonction de troncature pour les questions très longues (garde les premiers 160 caractères, ajoute "..." si tronqué) 
+# questions trop longues = peuvent contenir des données sensibles
 def _truncate(text: str, max_length: int = 160) -> str:
     if len(text) <= max_length:
         return text

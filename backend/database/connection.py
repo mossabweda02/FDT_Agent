@@ -1,17 +1,24 @@
 """
-database/connection.py
-=======================
-Connexion Azure Synapse via DefaultAzureCredential car cette méthode est plus sécurisée et compatible avec MFA et avoir des tokens qui se renouvellent automatiquement. 
+Module: backend.database.connection
+====================================
+Connexion Azure Synapse via DefaultAzureCredential.
 
-ActiveDirectoryPassword vs DefaultAzureCredential :
-- ActiveDirectoryPassword : nécessite de fournir un mot de passe en clair, pose des problèmes de sécurité et incompatible avec MFA.
-- DefaultAzureCredential : essaie plusieurs méthodes d'authentification, y compris Azure CLI (az login), Managed Identity, et plus. 
+Ce module gère la connexion sécurisée à Azure Synapse avec authentification Azure AD.
+Les tokens sont automatiquement renouvelés à chaque connexion (NullPool).
 
-Note : 
-* Cette methode est faisable juste pour le dev local.
-* Pour la prod (Déploiement sur Azure (App Service, VM, Function…)): on devra utiliser une Managed Identity ou un Service Principal avec certificat pour éviter les 
-tokens expirés et les problèmes de connexion.
+Stratégie d'authentification:
+  - Développement local: az login (DefaultAzureCredential)
+  - Production (recommandé): Managed Identity ou Service Principal avec certificat
 
+Avantages de DefaultAzureCredential:
+  - Supporte MFA (Multi-Factor Authentication)
+  - Tokens automatiquement renouvelés
+  - Compatible avec plusieurs modes d'auth (CLI, Managed Identity, certificat)
+
+Notes de production:
+  - Managed Identity: Pour Azure App Service, VM, Function Apps (recommandé)
+  - Service Principal: Pour CI/CD, scripts, applications autonomes
+  - Certificat: Préférer au mot de passe pour Service Principal
 """
 
 import os
@@ -25,6 +32,7 @@ from sqlalchemy.pool import NullPool
 from sqlalchemy import event
 
 load_dotenv()
+
 
 SYNAPSE_SERVER   = "met-dev-dataplatform-synapse-ondemand.sql.azuresynapse.net"
 SYNAPSE_DATABASE = os.getenv("SYNAPSE_DATABASE", "SilverLayer")
@@ -55,8 +63,6 @@ def _get_token_bytes() -> bytes:
 def get_engine():
     """
     Crée un Engine SQLAlchemy pour Azure Synapse.
-
-  
 
     Pool :
         NullPool car les tokens expirent — chaque connexion obtient

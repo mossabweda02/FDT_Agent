@@ -10,6 +10,9 @@ patterns des requêtes correctes en lui montrant quelques exemples annotés avec
 
 from typing import List, Dict
 
+# ────────────────────────────────────────────────────────────────────
+# Exemples Basiques — Questions simples, requêtes directes
+# ────────────────────────────────────────────────────────────────────
 BASIC_EXAMPLES = [
     {
         "user_question": "Combien d'heures ont été saisies en janvier 2026 ?",
@@ -77,6 +80,9 @@ WHERE MONTH(h.PERIODFROM) = 12
 }
 ]
 
+# ────────────────────────────────────────────────────────────────────
+# Exemples Intermédiaires — Questions plus complexes, requêtes avec jointures
+# ────────────────────────────────────────────────────────────────────
 INTERMEDIATE_EXAMPLES = [
     {
         "user_question": "Heures par employé en janvier 2026",
@@ -151,6 +157,9 @@ ORDER BY TotalHeures DESC""",
 }
 ]
 
+# ────────────────────────────────────────────────────────────────────
+# Exemples Avancés — Questions complexes, requêtes avec plusieurs jointures, agrégations, filtres temporels
+# ────────────────────────────────────────────────────────────────────
 ADVANCED_EXAMPLES = [
     {
         "user_question": "Heures par employé et par projet en janvier 2026",
@@ -267,6 +276,9 @@ ORDER BY TotalHeures DESC""",
     },
 ]
 
+# ────────────────────────────────────────────────────────────────────
+# Exemples de correction d'erreurs — Questions avec SQL incorrect, explication de l'erreur, et SQL corrigé
+# ────────────────────────────────────────────────────────────────────
 ERROR_CORRECTION_EXAMPLES = [
     {
         "user_question": "Total des heures en janvier 2026",

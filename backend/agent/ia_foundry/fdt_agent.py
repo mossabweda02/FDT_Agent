@@ -21,7 +21,7 @@ from azure.identity.aio import DefaultAzureCredential
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tools.tools_runner import run_tool
+from backend.tools.tools_runner import run_tool
 
 load_dotenv()
 

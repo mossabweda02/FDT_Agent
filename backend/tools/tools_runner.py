@@ -9,8 +9,8 @@ Objectifs :
 
 import json
 import re
-from tools.functions_tools import TOOL_FUNCTIONS
-from tools.sql_validator import validate_sql_query
+from backend.tools.functions_tool import TOOL_FUNCTIONS
+from backend.tools.sql_validator import validate_sql_query
 
 
 def _parse_args(raw) -> dict:
@@ -55,6 +55,7 @@ def _parse_args(raw) -> dict:
 
 
 def run_tool(name: str, arguments) -> str:
+    """Exécute un tool call de l'agent Azure AI Foundry."""
     fn = TOOL_FUNCTIONS.get(name)
 
     if not fn:

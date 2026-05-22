@@ -13,12 +13,16 @@ import os
 from dotenv import load_dotenv
 from azure.ai.agents import AgentsClient
 from azure.identity import DefaultAzureCredential
-from core.prompts import SYSTEM_PROMPT
+from backend.core.prompts import SYSTEM_PROMPT
 
 load_dotenv()
 
+# Endpoint de l'Azure AI Foundry
 endpoint = os.environ["AZURE_AI_PROJECT_ENDPOINT"]
 
+# ────────────────────────────────────────────────────────────────────
+# Définition des outils que l'agent 
+# ────────────────────────────────────────────────────────────────────
 tools = [
     {
         "type": "function",
@@ -80,6 +84,9 @@ tools = [
     },
 ]
 
+# ────────────────────────────────────────────────────────────────────
+# Création de l'agent 
+# ────────────────────────────────────────────────────────────────────
 with AgentsClient(
     endpoint=endpoint,
     credential=DefaultAzureCredential(),
