@@ -7,3 +7,6 @@ python-dotenv
 pydantic-settings
 pydantic-ai-slim[openai]
 logfire
+uvicorn
+fastapi
+logfire[fastapi]

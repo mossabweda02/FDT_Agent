@@ -1,9 +1,10 @@
 .env
 __pycache__/
+.pytest_cache/
+.vscode/
 *.pyc
 .venv/
 .prompt_hash
 .agent_version
 docs/
 scripts/
-tests/
