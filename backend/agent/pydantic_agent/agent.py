@@ -48,7 +48,9 @@ agent = Agent(
 register_tools(agent)
 
 
-async def ask(question: str) -> str:
+async def ask(question: str, conversation_id: str | None = None, 
+            history: list | None = None,
+    ) -> str:
     """Traite une question utilisateur et retourne une réponse synthétisée.
 
     Args:
@@ -76,7 +78,28 @@ async def ask(question: str) -> str:
         question_pii_detected=sq.pii_detected, # booléen indiquant si des données sensibles ont été détectées dans la question
     ):
         try:
-            result = await agent.run(question)
+            # Reconstruction d'un contexte conversationnel court.
+            # Les 6 derniers messages sont injectés dans le prompt
+            # afin de permettre la compréhension des réponses de suivi :
+            # "continuer", "oui", "confirmer", "annuler", etc.
+            #
+            # Cette approche est temporaire et sera remplacée par une
+            # mémoire persistante basée sur conversation_id.
+            context = ""
+            if history:
+                context = "\n".join(
+                    f"{m.role}: {m.content}" for m in history[-6:]
+                )
+
+            prompt = f"""
+        Contexte récent de la conversation :
+        {context}
+
+        Message actuel de l'utilisateur :
+        {question}
+        """.strip()
+
+            result = await agent.run(prompt)
             return result.output
         except Exception as e:
             return f"❌ Erreur agent : {e}"
