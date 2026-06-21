@@ -36,7 +36,7 @@ print("\n" + "=" * 80)
 print("LISTE DES VUES DISPONIBLES")
 print("=" * 80)
 print(views_df.to_string(index=False))
-
+print(f"\nNombre total de vues : {len(views_df)}")
 # Liste dynamique des vues
 all_views = views_df["TABLE_NAME"].tolist()
 
