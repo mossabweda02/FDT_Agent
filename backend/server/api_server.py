@@ -4,32 +4,33 @@ Module: backend.server.api_server
 Backend FastAPI pour l'API FDT Agent.
 
 Ce module expose les endpoints HTTP pour communiquer avec le frontend React:
-  - POST /ask     : Envoie une question à l'agent et récupère la réponse
+  - POST /ask     : Envoie une question à l'agent et récupère la réponse 
   - POST /suggest : Retourne 3 suggestions de questions contextuelles
   - GET /health   : Vérification santé du service
 
 Architecture:
   - Configure l'observabilité (Logfire + OpenTelemetry + Scrubbing)
-  - Crée l'application FastAPI avec CORS autorisé (port 5173)
+  - Crée l'application FastAPI avec CORS autorisé (port 3000)
   - Enregistre les middlewares de sécurité et de tracing
 
 Lancement:
   uvicorn backend.server.api_server:app --port 8000 --reload
+
+MVP :
+Le contexte est injecté directement dans le prompt.
+
+Une future évolution remplacera ce mécanisme par :
+- une mémoire persistante par conversation_id
+- un état de workflow métier (création/modification timesheet)
+- une gestion native des confirmations utilisateur
 """
 
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 import logfire
 
-from backend.agent.scrubbing.observability import (
-    configure_observability,
-    instrument_fastapi_app,
-    instrument_pydantic_ai,
-)
 
-configure_observability()
-instrument_pydantic_ai()
 
 # from agent.fdt_agent import ask
 from backend.agent.pydantic_agent import agent as pydantic_agent
@@ -42,12 +43,12 @@ from backend.core.training_examples import get_all_examples
 app = FastAPI(title="FDT Agent API", version="1.1.0")
 
 # Instrument fastapi (application web) 
-instrument_fastapi_app(app)
+# instrument_fastapi_app(app)
 
 # Communication de l'interface React avec l'API via CORS (Cross-Origin Resource Sharing)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], # les origines autorisées à communiquer avec l'API
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"], # les origines autorisées à communiquer avec l'API
     allow_credentials=True, # autoriser les identifiants (cookies, http auth, etc.)
     allow_methods=["*"], # méthodes HTTP autorisées
     allow_headers=["*"], # headers autorisés
@@ -57,11 +58,14 @@ app.add_middleware(
 # Modèles Pydantic pour validation des requêtes
 # ─────────────────────────────────────────────────────────────────────────────
 
+class Message(BaseModel):
+    role: str = "user"
+    content: str = ""
+
 class Question(BaseModel):
-    """Modèle pour les requêtes POST /ask."""
-
     question: str
-
+    conversation_id: str | None = None
+    history: list[Message] = Field(default_factory=list)
 
 class SuggestRequest(BaseModel):
     """Modèle pour les requêtes POST /suggest."""
@@ -72,8 +76,6 @@ class SuggestRequest(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 # Endpoints API
 # ─────────────────────────────────────────────────────────────────────────────
-
-
 @app.post("/ask")
 async def ask_route(q: Question) -> dict:
     """Traite une question utilisateur et retourne une réponse de l'agent.
@@ -89,7 +91,7 @@ async def ask_route(q: Question) -> dict:
         2. Délègue à pydantic_agent.ask()
         3. Retourne la réponse en JSON
     """
-    answer = await pydantic_agent.ask(q.question)
+    answer = await pydantic_agent.ask(q.question, conversation_id=q.conversation_id, history=q.history)
     return {"answer": answer}
 
 
