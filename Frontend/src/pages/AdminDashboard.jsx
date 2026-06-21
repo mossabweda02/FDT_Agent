@@ -13,9 +13,9 @@
 //        import AdminDashboard from './pages/AdminDashboard'
 //   2. Ajouter en première ligne du composant App() :
 //        if (window.location.hash === '#admin') return <AdminDashboard />
-//   3. Accéder au dashboard : http://localhost:5173/#admin
+//   3. Accéder au dashboard : http://localhost:3000/#admin
 //
-// Pour revenir au chat : retirer le hash → http://localhost:5173/
+// Pour revenir au chat : retirer le hash → http://localhost:3000/
 
 import { useState } from 'react';
 import AdminSidebar from '../components/admin/AdminSidebar';

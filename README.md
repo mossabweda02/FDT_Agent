@@ -83,7 +83,7 @@ uvicorn agent.api_server:app --port 8000 --reload
 # Dans un nouveau terminal, depuis le dossier /Frontend
 npm run dev
 ```
-L'application sera accessible à l'adresse `http://localhost:5173`.
+L'application sera accessible à l'adresse `http://localhost:3000`.
 
 **3. Démarrer l'Observabilité (Aspire Dashboard) :**
 Pour visualiser les traces et les logs en local avec le masquage des données activé :
