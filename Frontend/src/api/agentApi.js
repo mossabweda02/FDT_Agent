@@ -8,14 +8,21 @@
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
-export async function callAgent(question) {
+export async function callAgent(question, conversationId = null, history = []) {
   const r = await fetch(`${API_BASE_URL}/ask`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({
+      question: String(question ?? ""),
+      conversation_id: conversationId ? String(conversationId) : null,
+      history: Array.isArray(history) ? history : [],
+    }),
   });
 
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (!r.ok) {
+    const errorText = await r.text();
+    throw new Error(`HTTP ${r.status}: ${errorText}`);
+  }
 
   const d = await r.json();
   return d.answer ?? d.response ?? JSON.stringify(d);
