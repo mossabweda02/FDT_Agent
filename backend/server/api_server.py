@@ -25,12 +25,9 @@ Une future évolution remplacera ce mécanisme par :
 - une gestion native des confirmations utilisateur
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
-import logfire
-
-
 
 # from agent.fdt_agent import ask
 from backend.agent.pydantic_agent import agent as pydantic_agent
@@ -77,50 +74,36 @@ class SuggestRequest(BaseModel):
 # Endpoints API
 # ─────────────────────────────────────────────────────────────────────────────
 @app.post("/ask")
-async def ask_route(q: Question) -> dict:
-    """Traite une question utilisateur et retourne une réponse de l'agent.
+async def ask_route(q: Question, authorization: str | None = Header(None)) -> dict:
+    """Traite une question utilisateur authentifiée et retourne la réponse de l'agent.
 
-    Args:
-        q (Question): Modèle contenant la question utilisateur.
-
-    Returns:
-        dict: {"answer": str} - Réponse synthétisée par l'agent.
-
-    Process:
-        1. Reçoit la question via POST
-        2. Délègue à pydantic_agent.ask()
-        3. Retourne la réponse en JSON
+        Le Bearer token reçu depuis le frontend est propagé à l'agent afin que
+        les outils Integration Hub puissent exécuter les appels avec le contexte
+        de l'utilisateur connecté.
     """
-    answer = await pydantic_agent.ask(q.question, conversation_id=q.conversation_id, history=q.history)
+    auth_header = require_bearer_token(authorization)
+
+    answer = await pydantic_agent.ask(
+        q.question,
+        conversation_id=q.conversation_id,
+        history=q.history,
+        auth_header=auth_header,
+    )
+
     return {"answer": answer}
 
-
+# ── Suggestion endpoint ───────────────────────────────────────────────────
 @app.post("/suggest")
-async def suggest_route(req: SuggestRequest) -> dict:
-    """Retourne 3 suggestions de questions contextuelles.
+async def suggest_route(req: SuggestRequest, authorization: str | None = Header(default=None)) -> dict:
+    require_bearer_token(authorization)
 
-    Args:
-        req (SuggestRequest): Modèle contenant la question utilisateur.
-
-    Returns:
-        dict: {"suggestions": list[str]} - 3 questions suggérées.
-
-    Logique:
-        1. Extrait les mots-clés de la question utilisateur
-        2. Score chaque exemple de training_examples par pertinence
-        3. Retourne les 3 questions les plus pertinentes (non identiques)
-    """
     suggestions = _get_contextual_suggestions(req.question, n=3)
     return {"suggestions": suggestions}
 
-
+# ── Health check ───────────────────────────────────────────────────
 @app.get("/health")
 async def health_route() -> dict:
-    """Vérification santé du service FDT Agent API.
-
-    Returns:
-        dict: {"status": "ok", "service": str, "version": str}
-    """
+    """ Vérification santé du service FDT Agent API. """
     return {
         "status": "ok",
         "service": "FDT Agent API",
@@ -128,7 +111,7 @@ async def health_route() -> dict:
     }
 
 
-# ── Logique de suggestion ──────────────────────────────────────────
+# ── Logique de suggestion et Helpers ──────────────────────────────────────────
 def _get_contextual_suggestions(user_question: str, n: int = 3) -> list[str]:
     """
     Sélectionne les suggestions les plus pertinentes depuis training_examples.py.
@@ -225,136 +208,14 @@ def _get_contextual_suggestions(user_question: str, n: int = 3) -> list[str]:
             results.append(fb)
 
     return results[:n]
+ 
 
-# ──── API pour tester le scrubbing des données sensibles ────
-# Generer des spans de test pour valider que les données sensibles sont correctement scrubbées.
+def require_bearer_token(authorization: str | None) -> str:
+    """Valide la présence d'un Bearer token et retourne l'en-tête complet."""
 
-@app.get("/test-scrubbing-suite")
-async def test_scrubbing_suite():
-
-    # ─── Données sensées scrubber ───
-
-    # 1. RH/employé
-    with logfire.span(
-        "test scrubbing - hr sensitive fields",
-        scrubbing_group="hr",
-        employee_name="Mohamed Ben Ali",
-        resource_name="Mohamed Ben Ali",
-        PERSONNELNUMBER="EMP-458921",
-        RESOURCEID="RES-2936",
-        WORKER="123456",
-        salary=5000,
-    ):
-        pass
-
-    # 2. Finance 
-    with logfire.span(
-        "test scrubbing - finance sensitive fields",
-        scrubbing_group="finance",
-        StandardCost=1000.0,
-        TotalStandardCost=8000.0,
-        SalePrice=1500.0,
-        TotalSalePrice=12000.0,
-        RealCost=900.0,
-        TotalRealCost=7200.0,
-        TotalAmountCompanyCur=3000.0,
-        margin=0.25,
-        budget=50000,
-        revenue=75000,
-        profit=25000,
-    ):
-        pass
-
-    # 3. Notes / texte libre 
-    with logfire.span(
-        "test scrubbing - free text notes",
-        scrubbing_group="notes",
-        INTERNALNOTE="Mohamed Ben Ali worked on confidential task",
-        EXTERNALNOTE="Client Airbus Defense validation",
-        description="Contains sensitive business context",
-        referenceNumber="REF-SECRET-001",
-    ):
-        pass
-
-    # 4. Secrets techniques 
-    with logfire.span(
-        "test scrubbing - technical secrets",
-        scrubbing_group="secrets",
-        connection_string="Driver={ODBC};Server=synapse;Pwd=secret",
-        odbc="DSN=FDT;UID=user;PWD=password",
-        api_key="sk-secret-test",
-        client_secret="client-secret-value",
-        token="secret-token-value",
-        synapse_key="synapse-secret-key",
-    ):
-        pass
-
-    # 5. SQL / prompt leakage 
-    with logfire.span(
-        "test scrubbing - sql and llm content",
-        scrubbing_group="sql_llm",
-        db_statement="SELECT * FROM timesheet_line WHERE employee_name = 'Mohamed Ben Ali'",
-        sql="SELECT salary FROM ga_resource WHERE PERSONNELNUMBER = 'EMP-458921'",
-        prompt="Quel est le salaire de Mohamed Ben Ali ?",
-        completion="Le salaire de Mohamed Ben Ali est 5000 EUR",
-        response="Sensitive model response",
-    ):
-        pass
-    
-    # ──── Données peuvent être visibles (non sensibles) ────
-    # 6. Champs safe : visibles
-    with logfire.span(
-        "test scrubbing - safe telemetry fields",
-        scrubbing_group="safe",
-        question_preview="Combien d’heures a travaillé [PERSON] en janvier ?",
-        question_hash="abc123def456",
-        question_category="heures",
-        question_pii_detected=True,
-        model_name="gpt-4.1-nano",
-        agent_name="fdt-agent",
-        table_name="timesheet_line",
-        row_count=25,
-        operation_cost=0.002,
-    ):
-        pass
-
-    # 7. Attributs OTel / monitoring : visibles
-    with logfire.span(
-        "test scrubbing - otel safe attributes",
-        scrubbing_group="otel",
-        **{
-            "gen_ai.request.model": "gpt-4.1-nano",
-            "gen_ai.usage.input_tokens": 120,
-            "gen_ai.usage.output_tokens": 80,
-            "gen_ai.usage.total_tokens": 200,
-            "http.request.method": "GET",
-            "http.response.status_code": 200,
-            "http.route": "/test-scrubbing-suite",
-            "service.name": "fdt-agent",
-            "db.system": "mssql",
-            "db.operation": "SELECT",
-        },
-    ):
-        pass
-
-    return {
-        "status": "ok",
-        "message": "scrubbing suite spans generated",
-        "spans": [
-            "hr sensitive fields",
-            "finance sensitive fields",
-            "free text notes",
-            "technical secrets",
-            "sql and llm content",
-            "safe telemetry fields",
-            "otel safe attributes",
-        ],
-    }    
-
-# ── Health check ───────────────────────────────────────────────────
-@app.get("/health")
-async def health():
-    return {"status": "ok", "service": "FDT Agent API"}
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Bearer token manquant ou invalide.")
+    return authorization
 
 
 # ── Dev ────────────────────────────────────────────────────────────
