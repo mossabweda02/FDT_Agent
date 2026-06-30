@@ -1,38 +1,43 @@
 /**
  * App.jsx
  * ─────────────────────────────────────────────────────────────────
- * Application shell / root component.
- *
- * Responsibilities:
- *  - Import shared styles (styles/App.css)
- *  - Render the active page (currently ChatPage only)
- * 
- * Auth state is kept in React state only (no localStorage).
- * Replace `user` state management with your MSAL account object
- * once MSAL is integrated in AuthPage.jsx (search MSAL_HOOK).
+ * Gère l'affichage conditionnel entre :
+ * - AuthPage si l'utilisateur n'est pas authentifié ;
+ * - ChatPage si l'utilisateur est connecté ;
+ * - AdminDashboard via le hash #admin.
  */
 
-
-import { useState } from "react";
+import { useEffect } from "react";
+import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import AdminDashboard from "./pages/AdminDashboard";
 import ChatPage from "./pages/ChatPage";
 import AuthPage from "./pages/AuthPage";
 import "./styles/App.css";
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const isAuthenticated = useIsAuthenticated();
+  const { instance, accounts } = useMsal();
 
-  const handleAuthenticated = (account) => {
-    setUser(account);
-  };
+  useEffect(() => {
+    if (accounts.length > 0 && !instance.getActiveAccount()) {
+      instance.setActiveAccount(accounts[0]);
+    }
+  }, [accounts, instance]);
+
+  async function handleLogout() {
+    await instance.logoutRedirect({
+      account: instance.getActiveAccount(),
+      postLogoutRedirectUri: window.location.origin,
+    });
+  }
 
   if (window.location.hash === "#admin") {
     return <AdminDashboard />;
   }
 
-  if (!user) {
-    return <AuthPage onAuthenticated={handleAuthenticated} />;
+  if (!isAuthenticated) {
+    return <AuthPage />;
   }
 
-  return <ChatPage />;
+  return <ChatPage onLogout={handleLogout} />;
 }
