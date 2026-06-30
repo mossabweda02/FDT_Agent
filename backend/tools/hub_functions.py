@@ -40,12 +40,16 @@ def _token() -> str:
     return _credential.get_token(HUB_SCOPE).token
 
 
-def _headers() -> dict:
-    """Construit les headers communs pour Integration Hub."""
+def _headers(auth_header: str | None = None) -> dict:
+    """ Construit les headers communs pour Integration Hub.
+
+    Si `auth_header` est fourni, il est propagé directement afin d'exécuter
+    les appels Hub avec le contexte de l'utilisateur connecté.
+    Sinon, le backend utilise le token technique obtenu via `_token()`."""
 
     return {
-        "Authorization": f"Bearer {_token()}",
-        "X-Operate-Base-Url": OPERATE_BASE,   
+        "Authorization": auth_header if auth_header else f"Bearer {_token()}",
+        "X-Operate-Base-Url": OPERATE_BASE,
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
@@ -100,8 +104,11 @@ def _parse_response(response: httpx.Response) -> str:
         return _ok(response.text)
 
 # ── Requetes HTTP generiques ─────────────
-def _get(path: str, params: dict[str, Any] | None = None) -> str:
-    """Exécute une requête GET vers Integration Hub."""
+def _get(path: str, params: dict[str, Any], auth_header: str | None = None) -> str:
+    """Exécute une requête GET vers Integration Hub.
+    Le paramètre `auth_header` permet de transmettre le token utilisateur
+    depuis l'agent jusqu'à l'API Hub.
+    """
     
     clean_params = {
         k: v for k, v in (params or {}).items()
@@ -113,7 +120,7 @@ def _get(path: str, params: dict[str, Any] | None = None) -> str:
         response = httpx.get(
             f"{HUB_BASE}{path}",
             params=clean_params,
-            headers=_headers(),
+            headers=_headers(auth_header),
             timeout=30,
         )
         return _parse_response(response)
@@ -121,8 +128,11 @@ def _get(path: str, params: dict[str, Any] | None = None) -> str:
         return _err(0, str(exc))
 
 
-def _post(path: str, payload: dict[str, Any]) -> str:
-    """Exécute une requête POST vers Integration Hub."""
+def _post(path: str, payload: dict[str, Any], auth_header: str | None = None) -> str:
+    """Exécute une requête POST vers Integration Hub.
+    Le paramètre `auth_header` permet d'exécuter l'action avec le contexte
+    d'authentification de l'utilisateur connecté..
+    """
     
     clean_payload = {
         k: v for k, v in payload.items()
@@ -134,7 +144,7 @@ def _post(path: str, payload: dict[str, Any]) -> str:
         response = httpx.post(
             f"{HUB_BASE}{path}",
             json=clean_payload,
-            headers=_headers(),
+            headers=_headers(auth_header),
             timeout=30,
         )
         return _parse_response(response)
@@ -142,8 +152,10 @@ def _post(path: str, payload: dict[str, Any]) -> str:
         return _err(0, str(exc))
 
 
-def _put(path: str, payload: dict[str, Any]) -> str:
-    """Exécute une requête PUT vers Integration Hub."""
+def _put(path: str, payload: dict[str, Any], auth_header: str | None = None) -> str:
+    """Exécute une requête PUT vers Integration Hub. 
+    Le paramètre `auth_header` permet d'exécuter l'action avec le contexte
+    d'authentification de l'utilisateur connecté."""
     
     clean_payload = {
         k: v for k, v in payload.items()
@@ -155,7 +167,7 @@ def _put(path: str, payload: dict[str, Any]) -> str:
         response = httpx.put(
             f"{HUB_BASE}{path}",
             json=clean_payload,
-            headers=_headers(),
+            headers=_headers(auth_header),
             timeout=30,
         )
         return _parse_response(response)
@@ -163,8 +175,10 @@ def _put(path: str, payload: dict[str, Any]) -> str:
         return _err(0, str(exc))
 
 
-def _delete(path: str, params: dict[str, Any] | None = None) -> str:
-    """Exécute une requête DELETE vers Integration Hub."""
+def _delete(path: str, params: dict[str, Any] | None = None, auth_header: str | None = None) -> str:
+    """Exécute une requête DELETE vers Integration Hub.
+    Le paramètre `auth_header` permet d'exécuter l'action avec le contexte
+    d'authentification de l'utilisateur connecté."""
     
     clean_params = {
         k: v for k, v in (params or {}).items()
@@ -176,7 +190,7 @@ def _delete(path: str, params: dict[str, Any] | None = None) -> str:
         response = httpx.delete(
             f"{HUB_BASE}{path}",
             params=clean_params,
-            headers=_headers(),
+            headers=_headers(auth_header),
             timeout=30,
         )
         return _parse_response(response)
@@ -186,207 +200,103 @@ def _delete(path: str, params: dict[str, Any] | None = None) -> str:
 
 # ── Projets ────────────────────────────────────────────────────────────────
 
-def hub_list_projects(limit: int = 20) -> str:
+def hub_list_projects(limit: int=20, auth_header: str | None=None) -> str:
     """Liste les projets Operate."""
-    return _get("/api/projects", {"limit": limit})
+    return _get('/api/projects', {'limit': limit}, auth_header=auth_header)
 
 
-def hub_get_project(proj_id: str) -> str:
+def hub_get_project(proj_id: str, auth_header: str | None=None) -> str:
     """Récupère le détail d'un projet par projId."""
-    return _get(f"/api/project/{proj_id}")
+    return _get(f'/api/project/{proj_id}', {}, auth_header=auth_header)
 
 
 # ── Tâches ─────────────────────────────────────────────────────────────────
 
-def hub_get_project_tasks(proj_id: str) -> str:
+def hub_get_project_tasks(proj_id: str, auth_header: str | None=None) -> str:
     """Liste les tâches d'un projet."""
-    return _get(f"/api/project/{proj_id}/tasks")
+    return _get(f'/api/project/{proj_id}/tasks', {}, auth_header=auth_header)
 
 
-def hub_get_task(activity_number: str) -> str:
+def hub_get_task(activity_number: str, auth_header: str | None=None) -> str:
     """Récupère le détail d'une tâche par activityNumber."""
-    return _get(f"/api/task/{activity_number}")
+    return _get(f'/api/task/{activity_number}', {}, auth_header=auth_header)
 
 
-def hub_list_tasks(limit: int = 50) -> str:
+def hub_list_tasks(limit: int=50, auth_header: str | None=None) -> str:
     """Liste les tâches disponibles."""
-    return _get("/api/tasks", {"limit": limit})
+    return _get('/api/tasks', {'limit': limit}, auth_header=auth_header)
 
 
 # ── Ressources ─────────────────────────────────────────────────────────────
 
-def hub_find_resource(search: str) -> str:
+def hub_find_resource(search: str, auth_header: str | None=None) -> str:
     """Recherche une ressource par fragment de resourceId ou nom."""
-    return _get("/api/resources", {"search": search})
+    return _get('/api/resources', {'search': search}, auth_header=auth_header)
 
 
-def hub_get_resource(resource_id: str) -> str:
+def hub_get_resource(resource_id: str, auth_header: str | None=None) -> str:
     """Récupère une ressource par resourceId."""
-    return _get(f"/api/resource/{resource_id}")
+    return _get(f'/api/resource/{resource_id}', {}, auth_header=auth_header)
 
 
-def hub_find_resource_by_email(email: str) -> str:
+def hub_find_resource_by_email(email: str, auth_header: str | None=None) -> str:
     """Recherche une ressource par email."""
-    return _get("/api/resource-by-email", {"email": email})
+    return _get('/api/resource-by-email', {'email': email}, auth_header=auth_header)
 
-def hub_find_resource_by_name(
-    name: str | None = None,
-    first_name: str | None = None,
-    last_name: str | None = None,
-) -> str:
+def hub_find_resource_by_name(name: str | None=None, first_name: str | None=None, last_name: str | None=None, auth_header: str | None=None) -> str:
     """Recherche une ressource par nom complet, prénom ou nom."""
-    return _get(
-        "/api/resource-by-name",
-        {
-            "name": name,
-            "firstName": first_name,
-            "lastName": last_name,
-        },
-    )
+    return _get('/api/resource-by-name', {'name': name, 'firstName': first_name, 'lastName': last_name}, auth_header=auth_header)
 
 
 # ── Catégories Timesheet ───────────────────────────────────────────────────
 
-def hub_get_timesheet_categories(project_id: str, resource_id: str) -> str:
+def hub_get_timesheet_categories(project_id: str, resource_id: str, auth_header: str | None=None) -> str:
     """Récupère les catégories valides pour un projet et une ressource."""
-    return _get(
-        "/api/timesheet/categories",
-        {
-            "projectId": project_id,
-            "resourceId": resource_id,
-        },
-    )
+    return _get('/api/timesheet/categories', {'projectId': project_id, 'resourceId': resource_id}, auth_header=auth_header)
 
 
 # ── Timesheet header ───────────────────────────────────────────────────────
 
-def hub_create_timesheet( resource_id: str, period_start: str | None = None, description: str = "",
-) -> str:
-    
+def hub_create_timesheet(resource_id: str, period_start: str | None=None, description: str='', auth_header: str | None=None) -> str:
     """Crée une feuille de temps"""
-    return _post(
-        "/api/timesheet",
-        {
-            "resourceId": resource_id,
-            "periodStart": period_start,
-            "description": description,
-        },
-    )
+    return _post('/api/timesheet', {'resourceId': resource_id, 'periodStart': period_start, 'description': description}, auth_header=auth_header)
 
-def hub_list_timesheets(
-    resource_id: str | None = None,
-    limit: int = 50,
-    skip: int = 0,
-) -> str:
+def hub_list_timesheets(resource_id: str | None=None, limit: int=50, skip: int=0, auth_header: str | None=None) -> str:
     """Liste les feuilles de temps."""
-    return _get(
-        "/api/timesheets",
-        {
-            "resourceId": resource_id,
-            "limit": limit,
-            "skip": skip,
-        },
-    )
+    return _get('/api/timesheets', {'resourceId': resource_id, 'limit': limit, 'skip': skip}, auth_header=auth_header)
 
-def hub_get_timesheet(
-    timesheet_nbr: str,
-    resource_id: str | None = None,
-) -> str:
+def hub_get_timesheet(timesheet_nbr: str, resource_id: str | None=None, auth_header: str | None=None) -> str:
     """Récupère une feuille de temps par timesheet_nbr et resourceId."""
-    return _get(
-        f"/api/timesheet/{timesheet_nbr}",
-        {
-            "resourceId": resource_id,
-        },
-    )
+    return _get(f'/api/timesheet/{timesheet_nbr}', {'resourceId': resource_id}, auth_header=auth_header)
 
-def hub_update_timesheet(
-    timesheet_nbr: str,
-    description: str | None = None,
-    period_id: str | None = None,
-) -> str:
+def hub_update_timesheet(timesheet_nbr: str, description: str | None=None, period_id: str | None=None, auth_header: str | None=None) -> str:
     """Modifie une feuille de temps."""
-    
     payload = {}
-
     if description is not None:
-        payload["description"] = description
-
+        payload['description'] = description
     if period_id is not None:
-        payload["periodid"] = period_id
+        payload['periodid'] = period_id
+    return _put(f'/api/timesheet/{timesheet_nbr}', payload, auth_header=auth_header)
 
-    return _put(
-        f"/api/timesheet/{timesheet_nbr}",
-        payload,
-    )
-
-def hub_delete_timesheet(
-    timesheet_nbr: str,
-    resource_id: str | None = None,
-) -> str:
+def hub_delete_timesheet(timesheet_nbr: str, resource_id: str | None=None, auth_header: str | None=None) -> str:
     """Supprime une feuille de temps."""
-    
     params = {}
-
     if resource_id:
-        params["resourceId"] = resource_id
-
-    return _delete(
-        f"/api/timesheet/{timesheet_nbr}",
-        params,
-    )
+        params['resourceId'] = resource_id
+    return _delete(f'/api/timesheet/{timesheet_nbr}', params, auth_header=auth_header)
 
 # ── Timesheet lines : lecture ──────────────────────────────────────────────
 
-def hub_get_timesheet_lines(
-    timesheet_nbr: str,
-    proj_id: str | None = None,
-    activity_number: str | None = None,
-    date: str | None = None,
-    category_id: str | None = None,
-) -> str:
+def hub_get_timesheet_lines(timesheet_nbr: str, proj_id: str | None=None, activity_number: str | None=None, date: str | None=None, category_id: str | None=None, auth_header: str | None=None) -> str:
     """Récupère les lignes d'une feuille de temps avec filtres."""
-    return _get(
-        "/api/timesheet-lines",
-        {
-            "timesheetNbr": timesheet_nbr,
-            "projId": proj_id,
-            "activityNumber": activity_number,
-            "date": date,
-            "categoryId": category_id,
-        },
-    )
+    return _get('/api/timesheet-lines', {'timesheetNbr': timesheet_nbr, 'projId': proj_id, 'activityNumber': activity_number, 'date': date, 'categoryId': category_id}, auth_header=auth_header)
 
 
 # ── Timesheet lines : création ─────────────────────────────────────────────
 
-def hub_create_timesheet_line(
-    timesheet_nbr: str,
-    proj_id: str,
-    activity_number: str,
-    category_id: str,
-    resource_id: str,
-    date: str,
-    qty: float,
-    internal_note: str = "",
-    external_note: str = "",
-) -> str:
-    
+def hub_create_timesheet_line(timesheet_nbr: str, proj_id: str, activity_number: str, category_id: str, resource_id: str, date: str, qty: float, internal_note: str='', external_note: str='', auth_header: str | None=None) -> str:
     """Ajoute une ligne d'heures à une feuille de temps existante."""
-    return _post(
-        "/api/timesheet-line",
-        {
-            "timesheetNbr": timesheet_nbr,
-            "projId": proj_id,
-            "activityNumber": activity_number,
-            "categoryId": category_id,
-            "resourceId": resource_id,
-            "date": date,
-            "qty": qty,
-            "internalNote": internal_note,
-            "externalNote": external_note,
-        },
-    )
+    return _post('/api/timesheet-line', {'timesheetNbr': timesheet_nbr, 'projId': proj_id, 'activityNumber': activity_number, 'categoryId': category_id, 'resourceId': resource_id, 'date': date, 'qty': qty, 'internalNote': internal_note, 'externalNote': external_note}, auth_header=auth_header)
 
 
 # def hub_create_time_entry(
@@ -415,82 +325,43 @@ def hub_create_timesheet_line(
 
 # ── Timesheet lines : modification / suppression ──────────────────────────
 
-def hub_update_timesheet_line(
-    rec_id: str,
-    timesheet_nbr: str | None = None,
-    proj_id: str | None = None,
-    activity_number: str | None = None,
-    category_id: str | None = None,
-    resource_id: str | None = None,
-    date: str | None = None,
-    qty: float | None = None,
-    internal_note: str | None = None,
-    external_note: str | None = None,
-) -> str:
+def hub_update_timesheet_line(rec_id: str, timesheet_nbr: str | None=None, proj_id: str | None=None, activity_number: str | None=None, category_id: str | None=None, resource_id: str | None=None, date: str | None=None, qty: float | None=None, internal_note: str | None=None, external_note: str | None=None, auth_header: str | None=None) -> str:
     """Modifie une ligne de feuille de temps existante par recId."""
-    return _put(
-        f"/api/timesheet-line/{rec_id}",
-        {
-            "timesheetNbr": timesheet_nbr,
-            "qty": qty,
-            "date": date,
-            "projId": proj_id,
-            "activityNumber": activity_number,
-            "categoryId": category_id,
-            "resourceId": resource_id,
-            "internalNote": internal_note,
-            "externalNote": external_note,
-        },
-    )
+    return _put(f'/api/timesheet-line/{rec_id}', {'timesheetNbr': timesheet_nbr, 'qty': qty, 'date': date, 'projId': proj_id, 'activityNumber': activity_number, 'categoryId': category_id, 'resourceId': resource_id, 'internalNote': internal_note, 'externalNote': external_note}, auth_header=auth_header)
 
 
-def hub_delete_timesheet_line(rec_id: str) -> str:
+def hub_delete_timesheet_line(rec_id: str, auth_header: str | None=None) -> str:
     """Supprime une ligne de feuille de temps par recId."""
-    return _delete(f"/api/timesheet-line/{rec_id}")
+    return _delete(f'/api/timesheet-line/{rec_id}', auth_header=auth_header)
 
 # ── Livrables ───────────────────────────────────────────────────────────────
 
-def hub_get_project_deliverables(proj_id: str) -> str:
+def hub_get_project_deliverables(proj_id: str, auth_header: str | None=None) -> str:
     """Liste les livrables disponibles pour un projet."""
-    return _get(f"/api/project/{proj_id}/deliverables")
+    return _get(f'/api/project/{proj_id}/deliverables', {}, auth_header=auth_header)
 
 
-def hub_get_task_deliverables(activity_number: str) -> str:
+def hub_get_task_deliverables(activity_number: str, auth_header: str | None=None) -> str:
     """Liste les livrables liés à une tâche."""
-    return _get(f"/api/task/{activity_number}/deliverables")
+    return _get(f'/api/task/{activity_number}/deliverables', {}, auth_header=auth_header)
 
 
 # ── Périodes Timesheet ─────────────────────────────────────────────────────
 
-def hub_get_timesheet_periods(
-    resource_id: str | None = None,
-    open_only: bool | None = None,
-) -> str:
+def hub_get_timesheet_periods(resource_id: str | None=None, open_only: bool | None=None, auth_header: str | None=None) -> str:
     """Liste les périodes timesheet valides pour une ressource."""
-    return _get(
-        "/api/timesheet-periods",
-        {
-            "resourceId": resource_id,
-            "openOnly": str(open_only).lower() if open_only is not None else None,
-        },
-    )
+    return _get('/api/timesheet-periods', {'resourceId': resource_id, 'openOnly': str(open_only).lower() if open_only is not None else None}, auth_header=auth_header)
 
 
-def hub_get_timesheet_period_by_date(
-    date: str,
-    resource_id: str | None = None,
-) -> str:
+def hub_get_timesheet_period_by_date(date: str, resource_id: str | None=None, auth_header: str | None=None) -> str:
     """Retourne la période timesheet qui couvre une date donnée."""
-    return _get(
-        "/api/timesheet-period-by-date",
-        {
-            "date": date,
-            "resourceId": resource_id,
-        },
-    )
+    return _get('/api/timesheet-period-by-date', {'date': date, 'resourceId': resource_id}, auth_header=auth_header)
 
 # ── Registre des outils exposés à l'agent ──────────────────────────────────
 
+# Registre central des fonctions Hub exposées à l'agent.
+# Chaque fonction accepte `auth_header` pour supporter l'authentification
+# utilisateur dynamique via Microsoft Entra ID.
 HUB_FUNCTIONS = {
     # Projets
     "list_projects": hub_list_projects,
