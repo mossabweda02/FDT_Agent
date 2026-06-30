@@ -9,6 +9,8 @@ contre Azure Synapse.
 
 Classes et fonctions:
     - ask(question): Traite une question utilisateur et retourne une réponse.
+    - register_tools(agent): Enregistre les outils SQL disponibles pour l'agent.
+    - AgentDeps: Dépendances nécessaires pour l'agent afin de passer des informations contextuelles (ex: auth_header).
 """
 
 import os
@@ -24,10 +26,10 @@ from openai import AsyncAzureOpenAI
 from backend.agent.scrubbing.question_sanitizer import sanitize_question
 
 from backend.core.prompts.system_prompt import SYSTEM_PROMPT
-from backend.agent.pydantic_agent.tools import register_tools
+from backend.agent.pydantic_agent.tools import register_tools, AgentDeps
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Initialisation du client et du modèle Azure OpenAI
+# Initialisation du client Azure OpenAI, création de l'agent et enregistrement des outils
 # ─────────────────────────────────────────────────────────────────────────────
 
 _client = AsyncAzureOpenAI(
@@ -44,47 +46,37 @@ _model = OpenAIChatModel(
 agent = Agent(
     model=_model,
     system_prompt=SYSTEM_PROMPT,
+    deps_type=AgentDeps,
 )
 register_tools(agent)
 
 
-async def ask(question: str, conversation_id: str | None = None, 
-            history: list | None = None,
-    ) -> str:
-    """Traite une question utilisateur et retourne une réponse synthétisée.
+async def ask(question: str, conversation_id=None, history=None, auth_header: str | None = None):
+    """
+    Exécute une requête utilisateur via l'agent Pydantic AI.
 
     Args:
-        question (str): Question en langage naturel de l'utilisateur.
+        question: Message courant de l'utilisateur.
+        conversation_id: Identifiant de la conversation (prévu pour une mémoire persistante).
+        history: Historique récent utilisé pour reconstruire le contexte conversationnel.
+        auth_header: Jeton d'authentification propagé aux outils Integration Hub.
 
     Returns:
-        str: Réponse synthétisée par l'agent, ou message d'erreur préfixé par ❌.
-
-    Processus:
-        1. Sanitise la question (détection PII, hachage, catégorisation)
-        2. Crée un span OpenTelemetry pour le monitoring et traçage
-        3. Appelle l'agent Pydantic AI avec les outils SQL disponibles
-        4. Retourne la réponse en langage naturel ou une erreur
-
-    Raises:
-        Exception: Capturée internement, retournée comme message d'erreur.
+        Réponse générée par l'agent ou un message d'erreur.
     """
     sq = sanitize_question(question)
 
     with logfire.span(
         "fdt.agent.ask", # nom du span 
-        question_hash=sq.hash, # hash de la question pour identifier les questions similaires sans stocker le texte brut
-        question_preview=sq.preview, # aperçu de la question pour debug sans exposer potentiellement des données sensibles
+        question_hash=sq.hash, # hash de la question pour identifier les questions similaires
+        question_preview=sq.preview, # aperçu de la question pour debug sans exposer des données sensibles
         question_category=sq.category, # catégorie de la question (ex: finance, rh, opérations) pour monitorer les types de questions posées
-        question_pii_detected=sq.pii_detected, # booléen indiquant si des données sensibles ont été détectées dans la question
+        question_pii_detected=sq.pii_detected, # Personal Identifiable Information : booléen indiquant si des données sensibles ont été détectées dans la question
     ):
         try:
-            # Reconstruction d'un contexte conversationnel court.
-            # Les 6 derniers messages sont injectés dans le prompt
-            # afin de permettre la compréhension des réponses de suivi :
-            # "continuer", "oui", "confirmer", "annuler", etc.
-            #
-            # Cette approche est temporaire et sera remplacée par une
-            # mémoire persistante basée sur conversation_id.
+            # Reconstruit un contexte conversationnel court à partir
+            # des derniers échanges. Cette approche est temporaire et
+            # sera remplacée par une mémoire persistante.
             context = ""
             if history:
                 context = "\n".join(
@@ -99,7 +91,10 @@ async def ask(question: str, conversation_id: str | None = None,
         {question}
         """.strip()
 
-            result = await agent.run(prompt)
+            result = await agent.run(
+                prompt,
+                deps=AgentDeps(auth_header=auth_header),
+                )
             return result.output
         except Exception as e:
             return f"❌ Erreur agent : {e}"
