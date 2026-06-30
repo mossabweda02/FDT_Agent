@@ -1,27 +1,18 @@
 /**
- * pages/ChatPage.jsx
- * This is the primary (and currently only) page of the application.
- * It was extracted from App.jsx to separate routing/shell concerns
- * (App.jsx) from page-level UI and business logic (this file).
+ * Module: pages/ChatPage.jsx
+ * ==========================
+ * Page principale de l'interface conversationnelle FDT Agent.
  *
- * Responsibilities:
- *  - i18n string table (FR / EN)
- *  - Conversational vs analytical query detection
- *  - Global CSS injection (design tokens, animations, dark/light theme)
- *  - All sub-components: ThinkingProcess, TypingIndicator, message
- *    bubbles, WelcomeScreen, ContextSuggestions, RenameModal,
- *    SettingsModal, Sidebar, InputBar
- *  - Root component ChatPage: session management, send logic, theme
- *    & font-size effects
- *
- * Phase 1 improvements (preserved from original):
- *  1. Improved light-mode colours, contrast and shadows
- *  2. Per-conversation rename / delete management
- *  3. "Connected" indicator removed from the navbar
- *  4. Agent replies left-aligned
- *  5. i18n via inline T table (mirrors /src/i18n/fr.json & en.json)
- *  6. "Clear history" global action preserved
+ * Responsabilités :
+ * - gérer les sessions de conversation et l'historique des messages ;
+ * - envoyer les questions utilisateur à l'API backend ;
+ * - afficher les réponses de l'agent, les erreurs et les suggestions de suivi ;
+ * - distinguer les requêtes conversationnelles des requêtes analytiques ;
+ * - gérer les paramètres d'interface : thème, langue et taille du texte ;
+ * - gérer la sidebar, le renommage et la suppression des conversations ;
+ * - exposer une action de déconnexion lorsque `onLogout` est fournie.
  */
+ 
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -782,7 +773,7 @@ function InputBar({ value, onChange, onSend, disabled, t }) {
  * It owns all state: sessions, active session, UI flags, settings.
  * Rendered by App.jsx.
  */
-export default function ChatPage() {
+export default function ChatPage({ onLogout }) {
   // ─── State ────────────────────────────────────────────────────
   const [sessions,        setSessions]        = useState([]);
   const [activeId,        setActiveId]        = useState(null);
@@ -1002,6 +993,12 @@ export default function ChatPage() {
               )}
             </div>
 
+            {onLogout && (
+              <button type="button" onClick={onLogout} className="logout-btn">
+                Déconnexion
+              </button>
+            )}
+            
             {/* Settings button only (no "Connected" badge) */}
             <button onClick={() => setSettingsOpen(true)} style={{
               background: "var(--surface)", border: "1px solid var(--border2)",

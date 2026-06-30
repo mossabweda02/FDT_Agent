@@ -20,6 +20,7 @@ Filtrage des colonnes:
 
 import json
 import logging
+import os
 
 import pandas as pd
 
@@ -251,6 +252,53 @@ def execute_query(query: str) -> str:
 
         return _err(msg, hint)
 
+# ── Outil 7 : Diagnostic sécurisé authentification Hub ────────────────────────────────
+
+def get_auth_runtime_status() -> str:
+    """
+    Retourne un diagnostic sécurisé du mode d'authentification Hub.
+
+    Ne retourne jamais :
+      - token
+      - client secret
+      - tenant complet sensible
+      - valeur brute des variables d'environnement
+    """
+    has_static_token = bool(os.environ.get("HUB_BEARER_TOKEN"))
+    has_hub_scope = bool(os.environ.get("HUB_SCOPE"))
+    has_user_auth = False  # Sera activé plus tard avec Entra ID frontend.
+
+    if has_static_token:
+        auth_mode = "test_bearer_token"
+        message = (
+            "Le backend utilise actuellement un token Bearer temporaire pour les tests "
+            "Integration Hub. L'authentification utilisateur Entra ID n'est pas encore activée."
+        )
+    else:
+        auth_mode = "default_azure_credential"
+        message = (
+            "Le backend tente d'obtenir un token via DefaultAzureCredential. "
+            "En local, cela nécessite généralement une session Azure CLI valide."
+        )
+
+    return json.dumps(
+        {
+            "ok": True,
+            "auth_mode": auth_mode,
+            "user_auth_enabled": has_user_auth,
+            "hub_scope_configured": has_hub_scope,
+            "hub_user_filtering_expected": True,
+            "safe_message": message,
+            "security_note": (
+                "Les tokens, secrets et valeurs sensibles ne sont jamais exposés. "
+                "Après l'authentification Entra ID, le token utilisateur devra être propagé "
+                "vers Integration Hub pour appliquer le filtrage par utilisateur connecté."
+            ),
+        },
+        ensure_ascii=False,
+        default=str,
+    )
+
 # ── Mapping ───────────────────────────────────────────────────────
 TOOL_FUNCTIONS = {
     "list_tables":             list_tables,
@@ -259,4 +307,5 @@ TOOL_FUNCTIONS = {
     "get_table_relationships": get_table_relationships,
     "get_database_schema":     get_database_schema,
     "execute_query":           execute_query,
+    "get_auth_runtime_status": get_auth_runtime_status,
 }
