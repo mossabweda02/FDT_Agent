@@ -33,10 +33,16 @@ async function getAuthHeaders() {
   };
 }
 
-export async function callAgent(question, conversationId = null, history = []) {
+export async function callAgent(
+  question,
+  conversationId = null,
+  history = [],
+  signal = undefined
+) {
   const r = await fetch(`${API_BASE_URL}/ask`, {
     method: "POST",
     headers: await getAuthHeaders(),
+    signal,
     body: JSON.stringify({
       question: String(question ?? ""),
       conversation_id: conversationId ? String(conversationId) : null,
