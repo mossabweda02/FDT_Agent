@@ -30,6 +30,9 @@
   "themeDark": "Dark",
   "themeLight": "Light",
   "themeSystem": "System",
+  "emptyConversationTitle": "Start a new conversation",
+  "emptyConversationDescription": "Ask a question about your timesheets, projects or tasks.",
+  "emptyConversationExample": "Example: \"How many hours did I log this month?\"",
   "steps": [
     "Analysing the question",
     "Querying the database",

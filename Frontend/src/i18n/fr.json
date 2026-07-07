@@ -30,6 +30,9 @@
   "themeDark": "Sombre",
   "themeLight": "Clair",
   "themeSystem": "Système",
+  "emptyConversationTitle": "Commencez une nouvelle conversation",
+  "emptyConversationDescription": "Posez une question sur vos feuilles de temps, vos projets ou vos tâches.",
+  "emptyConversationExample": "Exemple : « Combien d’heures ai-je saisies ce mois-ci ? »",
   "steps": [
     "Analyse de la question",
     "Interrogation de la base",
