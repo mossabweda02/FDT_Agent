@@ -14,16 +14,30 @@
  */
  
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
-  Search, Database, Cpu, CheckCircle, Copy, Check,
-  Settings, X, Sun, Moon, Monitor, Globe,
-  MessageSquare, History, Sparkles, Send,
-  PanelLeftClose, PanelLeftOpen,
-  BarChart3, Users, FolderOpen, Timer,
-  Plus, Trash2, Bot, MoreHorizontal, Pencil,
+  Settings, X, Sun, Moon, Monitor, 
+  Globe,Sparkles, ArrowUp, Square, ChevronDown,
+  PanelLeftClose, PanelLeftOpen, BarChart3, Users, 
+  FolderOpen, Timer, Bot
 } from "lucide-react";
 import { useTranslation } from "../i18n/useTranslation";
+import "../styles/ChatPage.css";
+import "../components/sidebar/Sidebar.css";
+
+import Sidebar from "../components/sidebar/Sidebar";
+import ToolGroup from "../components/chat/ToolGroup";
+import AgentMessage from "../components/chat/messages/AgentMessage";
+import UserMessage from "../components/chat/messages/UserMessage";
+import TypingMessage from "../components/chat/messages/TypingMessage";
+import ErrorMessage from "../components/chat/messages/ErrorMessage";
+import ThemeToggle from "../components/ui/ThemeToggle";
+import SettingsPanel from "../components/settings/SettingsPanel";
+
+import useChatPreferences from "../hooks/useChatPreferences";
+import useSmartAutoScroll from "../hooks/useSmartAutoScroll";
+import usePersistentState from "../hooks/usePersistentState";
+import useMicrosoftProfilePhoto from "../hooks/useMicrosoftProfilePhoto";
 
 import { callAgent, fetchSuggestions } from "../api/agentApi";
 
@@ -80,312 +94,111 @@ const fmt = d =>
 const genId = () => Date.now() + Math.random();
 
 // ═══════════════════════════════════════════════════════════════════
-// 6. HOOK — useCopy
-// ═══════════════════════════════════════════════════════════════════
-
-/** Returns [copied, copyFn]. Sets copied=true for 2 s after a successful copy. */
-function useCopy() {
-  const [copied, setCopied] = useState(false);
-  const copy = useCallback(text => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }, []);
-  return [copied, copy];
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// 7. SUB-COMPONENTS
-// ═══════════════════════════════════════════════════════════════════
-
-/** Animated step-by-step thinking indicator shown during analytical queries. */
-function ThinkingProcess({ step, expanded, onToggle, t }) {
-  const done = step >= 4;
-  const labels = t.steps;
-  const ICONS = [Search, Database, Cpu, CheckCircle];
-  return (
-    <div style={{
-      background: "var(--glass)", border: "1px solid var(--border)",
-      borderRadius: "var(--radius)", overflow: "hidden",
-      backdropFilter: "blur(12px)", marginBottom: 12,
-      boxShadow: "var(--shadow-sm)",
-    }}>
-      <button onClick={onToggle} style={{
-        width: "100%", display: "flex", alignItems: "center",
-        gap: 10, padding: "10px 14px", background: "transparent",
-        border: "none", color: "var(--text2)", fontSize: 12,
-      }}>
-        <div style={{
-          width: 6, height: 6, borderRadius: "50%",
-          background: done ? "var(--success)" : "var(--pri)",
-          boxShadow: `0 0 8px ${done ? "var(--success)" : "var(--pri)"}`,
-          animation: done ? "none" : "pulse 1.2s infinite",
-        }} />
-        <span style={{ fontWeight: 500, color: "var(--text2)" }}>
-          {t.thinking}{" "}
-          {done
-            ? t.thinkingDone
-            : `(${t.thinkingStep} ${Math.min(step + 1, 4)}/4)`}
-        </span>
-        <span style={{ marginLeft: "auto", fontSize: 10 }}>{expanded ? "▲" : "▼"}</span>
-      </button>
-
-      {expanded && (
-        <div style={{ padding: "0 14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-          {labels.map((label, i) => {
-            const Icon = ICONS[i];
-            const isActive  = i === step && !done;
-            const isDone    = i < step || done;
-            const isPending = i > step && !done;
-            return (
-              <div key={i} style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "7px 10px", borderRadius: "var(--radius-sm)",
-                background: isActive ? "var(--pri-dim)" : isDone ? "rgba(34,197,94,0.06)" : "transparent",
-                border: `1px solid ${isActive ? "var(--border)" : isDone ? "rgba(34,197,94,.15)" : "transparent"}`,
-                opacity: isPending ? 0.35 : 1, transition: "all .3s",
-              }}>
-                <div style={{
-                  width: 28, height: 28, borderRadius: 7, flexShrink: 0,
-                  background: isActive ? "var(--pri-dim)" : isDone ? "rgba(34,197,94,.12)" : "var(--surface)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {isActive
-                    ? <div style={{ width: 13, height: 13, border: "2px solid var(--pri)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin .8s linear infinite" }} />
-                    : <Icon size={13} color={isDone ? "var(--success)" : "var(--text3)"} />
-                  }
-                </div>
-                <span style={{ fontSize: 12, color: isActive ? "var(--text)" : isDone ? "#86efac" : "var(--text2)" }}>
-                  {label}
-                </span>
-                {isDone && <CheckCircle size={11} color="var(--success)" style={{ marginLeft: "auto" }} />}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Animated typing dots shown during conversational (non-analytical) replies. */
-function TypingIndicator({ t }) {
-  return (
-    <div className="fade-up" style={{ display: "flex", gap: 10, marginBottom: 20, alignItems: "flex-start" }}>
-      <div style={{
-        width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-        background: "var(--grad)", display: "flex", alignItems: "center",
-        justifyContent: "center", fontSize: 15,
-        boxShadow: "0 4px 12px rgba(108,76,252,.35)",
-      }}>⏱</div>
-      <div style={{
-        padding: "13px 16px", background: "var(--glass)",
-        border: "1px solid var(--border2)", borderRadius: "4px 16px 16px 16px",
-        backdropFilter: "blur(12px)", display: "flex", alignItems: "center", gap: 10,
-        boxShadow: "var(--shadow-sm)",
-      }}>
-        <span style={{ fontSize: 13, color: "var(--text2)" }}>{t.typingLabel}</span>
-        <div style={{ display: "flex", gap: 4 }}>
-          {[0, 1, 2].map(i => (
-            <div key={i} style={{
-              width: 5, height: 5, borderRadius: "50%", background: "var(--pri)",
-              animation: `blink 1.2s ${i * 0.2}s ease-in-out infinite`,
-            }} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Message bubbles ───────────────────────────────────────────────
-
-/** Right-aligned bubble for messages sent by the user. */
-function UserBubble({ text, time, t }) {
-  const [copied, copy] = useCopy();
-  const [hov, setHov] = useState(false);
-  return (
-    <div className="fade-up" style={{ display: "flex", justifyContent: "flex-end", marginBottom: 20, gap: 8, alignItems: "flex-end" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-        <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{ position: "relative" }}>
-          {hov && (
-            <button onClick={() => copy(text)} style={{
-              position: "absolute", top: -30, right: 0, zIndex: 10,
-              background: "var(--bg2)", border: "1px solid var(--border2)",
-              borderRadius: 6, padding: "3px 8px", fontSize: 11,
-              color: "var(--text2)", display: "flex", alignItems: "center", gap: 4,
-              boxShadow: "var(--shadow-sm)",
-            }}>
-              {copied ? <Check size={10} /> : <Copy size={10} />}
-              {copied ? t.copied : t.copy}
-            </button>
-          )}
-          <div style={{
-            maxWidth: 480, padding: "11px 16px",
-            background: "var(--grad)", borderRadius: "16px 16px 4px 16px",
-            color: "#fff", fontSize: 14, lineHeight: 1.65,
-            boxShadow: "0 6px 24px rgba(108,76,252,.3)",
-          }}>{text}</div>
-        </div>
-        <span style={{ fontSize: 10, color: "var(--text3)", display: "flex", alignItems: "center", gap: 4 }}>
-          <Timer size={9} />{time}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/** Left-aligned bubble for agent responses. Supports **bold** markdown. */
-function AgentBubble({ text, time, t }) {
-  const [copied, copy] = useCopy();
-  const [hov, setHov] = useState(false);
-
-  // Render newlines and **bold** markers inline
-  const renderText = raw => {
-    const s = typeof raw === "string" ? raw : JSON.stringify(raw);
-    return s.split("\n").map((line, i) => {
-      const parts = line.split(/(\*\*[^*]+\*\*)/g);
-      return (
-        <p key={i} style={{ margin: i === 0 ? 0 : "5px 0 0" }}>
-          {parts.map((p, j) =>
-            p.startsWith("**") && p.endsWith("**")
-              ? <strong key={j} style={{ color: "var(--acc)", fontWeight: 600 }}>{p.slice(2, -2)}</strong>
-              : p
-          )}
-        </p>
-      );
-    });
-  };
-
-  return (
-    <div className="fade-up" style={{ display: "flex", gap: 10, marginBottom: 20, alignItems: "flex-start" }}>
-      <div style={{
-        width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-        background: "var(--grad)", display: "flex", alignItems: "center",
-        justifyContent: "center", fontSize: 15,
-        boxShadow: "0 4px 12px rgba(108,76,252,.35)",
-      }}>⏱</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 640, flex: 1 }}>
-        <div onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)} style={{ position: "relative" }}>
-          {hov && (
-            <button onClick={() => copy(typeof text === "string" ? text : JSON.stringify(text))} style={{
-              position: "absolute", top: -30, left: 0, zIndex: 10,
-              background: "var(--bg2)", border: "1px solid var(--border2)",
-              borderRadius: 6, padding: "3px 8px", fontSize: 11,
-              color: "var(--text2)", display: "flex", alignItems: "center", gap: 4,
-              boxShadow: "var(--shadow-sm)",
-            }}>
-              {copied ? <Check size={10} /> : <Copy size={10} />}
-              {copied ? t.copied : t.copy}
-            </button>
-          )}
-          <div style={{
-            padding: "12px 16px", background: "var(--glass)",
-            border: "1px solid var(--border2)", borderRadius: "4px 16px 16px 16px",
-            backdropFilter: "blur(12px)", fontSize: 14, lineHeight: 1.7, color: "var(--text)",
-            textAlign: "left",
-            boxShadow: "var(--shadow-sm)",
-          }}>
-            {renderText(text)}
-          </div>
-        </div>
-        <span style={{ fontSize: 10, color: "var(--text3)", paddingLeft: 2, display: "flex", alignItems: "center", gap: 4 }}>
-          <Timer size={9} />{time}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/** Error bubble shown when the backend call fails. */
-function ErrorBubble({ text }) {
-  return (
-    <div className="fade-up" style={{ display: "flex", gap: 10, marginBottom: 20, alignItems: "flex-start" }}>
-      <div style={{
-        width: 32, height: 32, borderRadius: 10,
-        background: "rgba(239,68,68,.12)", display: "flex",
-        alignItems: "center", justifyContent: "center", fontSize: 14,
-      }}>⚠️</div>
-      <div style={{
-        padding: "12px 16px", background: "rgba(239,68,68,.07)",
-        border: "1px solid rgba(239,68,68,.2)", borderRadius: "4px 16px 16px 16px",
-        fontSize: 13, color: "#fca5a5", lineHeight: 1.6, maxWidth: 520,
-        textAlign: "left",
-      }}>{text}</div>
-    </div>
-  );
-}
+// 6. SUB-COMPONENTS
+// ═══════════════════════════════════════════════════════════════════x 
 
 // ─── Welcome screen ────────────────────────────────────────────────
 
 /** Shown when a session has no messages yet. Displays quick-action tiles. */
-function WelcomeScreen({ onSend, t }) {
+function WelcomeScreen({ onSend, input, onInputChange, disabled, t, user }) {
   const tiles = t?.quickTiles ?? [];
   const ICONS = [Timer, FolderOpen, Users, BarChart3];
+
+  const firstName = user?.name?.split(" ")?.[0] || "Utilisateur";
+
   return (
-    <div style={{
-      flex: 1, display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
-      gap: 40, padding: "40px 24px", textAlign: "center",
-    }}>
-      <div>
-        <div style={{
-          width: 72, height: 72, borderRadius: 20, margin: "0 auto 20px",
-          background: "var(--grad)", display: "flex", alignItems: "center",
-          justifyContent: "center", fontSize: 32,
-          boxShadow: "0 0 48px rgba(108,76,252,.4)",
-        }}>⏱</div>
-        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>
-          {t.welcomeTitle}
-        </h1>
-        <p style={{ color: "var(--text2)", fontSize: 14, maxWidth: 380, lineHeight: 1.6 }}>
-          {t.welcomeSub}
-        </p>
+    <section className="chat-home fade-up">
+      <div className="chat-home-background" />
+
+      <div className="chat-home-content">
+        <div className="chat-home-logo">
+          <Timer size={34} />
+        </div>
+
+        <div className="chat-home-heading">
+          <h1>Bonjour, {firstName}.</h1>
+          <p>Comment puis-je vous aider aujourd’hui avec vos feuilles de temps ?</p>
+        </div>
+
+        <div className="chat-home-input">
+          <InputBar
+            value={input}
+            onChange={onInputChange}
+            onSend={() => onSend()}
+            disabled={disabled}
+            t={t}
+          />
+        </div>
+
+        <div className="chat-home-suggestions">
+          {tiles.map((tile, index) => {
+            const Icon = ICONS[index] || Sparkles;
+
+            return (
+              <button
+                key={tile.label}
+                type="button"
+                className="chat-home-suggestion"
+                onClick={() => onSend(tile.q)}
+              >
+                {/* <span className="chat-home-suggestion-icon">
+                  <Icon size={15} />
+                </span> */}
+
+                <span className="chat-home-suggestion-content">
+                  {/* <strong>{tile.label}</strong> */}
+                  <small>{tile.q}</small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, maxWidth: 480, width: "100%" }}>
-        {tiles.map((t, i) => {
-          const Icon = ICONS[i];
-          return (
-            <button key={i} onClick={() => onSend(t.q)} style={{
-              background: "var(--glass)", border: "1px solid var(--border2)",
-              borderRadius: "var(--radius)", padding: "12px 14px",
-              textAlign: "left", transition: "all .2s", backdropFilter: "blur(10px)",
-              boxShadow: "var(--shadow-sm)",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = "var(--pri-dim)"; e.currentTarget.style.borderColor = "var(--pri)"; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "var(--shadow-md)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "var(--glass)"; e.currentTarget.style.borderColor = "var(--border2)"; e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; }}
-            >
-              <Icon size={16} color="var(--pri)" style={{ marginBottom: 6 }} />
-              <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text)", marginBottom: 2 }}>{t.label}</div>
-              <div style={{ fontSize: 11, color: "var(--text2)", lineHeight: 1.4 }}>{t.q}</div>
-            </button>
-          );
-        })}
-      </div>
-    </div>
+    </section>
   );
 }
 
 /** Follow-up suggestion chips shown after an analytical response. */
-function ContextSuggestions({ suggestions, onSend, t }) {
+function ContextSuggestions({ suggestions, onSend }) {
   if (!suggestions.length) return null;
+
   return (
-    <div className="fade-up" style={{ padding: "0 0 16px", paddingLeft: 42 }}>
-      <p style={{ fontSize: 11, color: "var(--text3)", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}>
-        <Sparkles size={11} color="var(--pri)" /> {t.suggestionLabel}
-      </p>
-      <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
-        {suggestions.map((s, i) => (
-          <button key={i} onClick={() => onSend(s)} className="pop-in" style={{
-            background: "var(--glass)", border: "1px solid var(--border)",
-            borderRadius: 20, padding: "5px 12px", color: "var(--text2)",
-            fontSize: 12, transition: "all .15s",
-            animationDelay: `${i * 0.06}s`, backdropFilter: "blur(8px)",
+    <div className="context-suggestions">
+      <div
+          className="context-suggestions-list"
+          onMouseDown={(e) => {
+            const slider = e.currentTarget;
+            let isDown = true;
+            const startX = e.pageX - slider.offsetLeft;
+            const scrollLeft = slider.scrollLeft;
+
+            function onMouseMove(moveEvent) {
+              if (!isDown) return;
+              moveEvent.preventDefault();
+              const x = moveEvent.pageX - slider.offsetLeft;
+              const walk = (x - startX) * 1.4;
+              slider.scrollLeft = scrollLeft - walk;
+            }
+
+            function onMouseUp() {
+              isDown = false;
+              window.removeEventListener("mousemove", onMouseMove);
+              window.removeEventListener("mouseup", onMouseUp);
+            }
+
+            window.addEventListener("mousemove", onMouseMove);
+            window.addEventListener("mouseup", onMouseUp);
           }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--pri)"; e.currentTarget.style.color = "var(--text)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text2)"; }}
-          >{s}</button>
+        >
+        {suggestions.slice(0, 4).map((suggestion, index) => (
+          <button
+            key={`${suggestion}-${index}`}
+            type="button"
+            className="context-suggestion-pill"
+            onClick={() => onSend(suggestion)}
+          >
+            {suggestion}
+          </button>
         ))}
       </div>
     </div>
@@ -551,214 +364,42 @@ function SettingsModal({ settings, onChange, onClose, t }) {
   );
 }
 
-// ─── Sidebar ───────────────────────────────────────────────────────
-
-/**
- * Collapsible sidebar.
- * Lists all sessions with per-item context menu (rename / delete).
- * Also exposes a global "Clear history" button at the bottom.
- */
-function Sidebar({ sessions, activeId, onSelect, onNewChat, onClear,
-                   onRename, onDelete, collapsed, t }) {
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const menuRef = useRef(null);
-
-  // Close the context menu on outside click
-  useEffect(() => {
-    function handleClick(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpenMenuId(null);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
-  return (
-    <div style={{
-      width: collapsed ? 0 : 252, minWidth: collapsed ? 0 : 252,
-      height: "100%", background: "var(--bg2)",
-      borderRight: "1px solid var(--border2)",
-      display: "flex", flexDirection: "column",
-      overflow: "hidden", transition: "width .3s, min-width .3s", flexShrink: 0,
-    }}>
-      {!collapsed && (
-        <>
-          {/* Branding */}
-          <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--border2)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--grad)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>⏱</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>{t.appName}</div>
-                <div style={{ fontSize: 10, color: "var(--text3)" }}>{t.appSub}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* New conversation button */}
-          <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border2)" }}>
-            <button onClick={onNewChat} style={{
-              width: "100%", padding: "8px 12px", borderRadius: "var(--radius-sm)",
-              background: "var(--pri-dim)", border: "1px solid var(--border)",
-              color: "var(--text)", fontSize: 12, fontWeight: 500,
-              display: "flex", alignItems: "center", gap: 8, transition: "all .15s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = "var(--pri-dim2)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "var(--pri-dim)"; }}
-            >
-              <Plus size={12} color="var(--pri)" /> {t.newChat}
-            </button>
-          </div>
-
-          {/* Session list */}
-          <div style={{ padding: "12px 12px 6px", flex: 1, overflowY: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
-              <History size={12} color="var(--text3)" />
-              <span style={{ fontSize: 11, color: "var(--text3)", fontWeight: 500, letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                {t.history}
-              </span>
-            </div>
-
-            {sessions.length === 0
-              ? <p style={{ fontSize: 12, color: "var(--text3)", padding: "8px", fontStyle: "italic" }}>
-                  {t.noHistory}
-                </p>
-              : [...sessions].reverse().map((session, i) => {
-                  const isActive   = session.id === activeId;
-                  const isMenuOpen = openMenuId === session.id;
-                  return (
-                    <div key={session.id} style={{ position: "relative", marginBottom: 2 }}>
-                      <button
-                        onClick={() => { setOpenMenuId(null); onSelect(session.id); }}
-                        className="slide-in"
-                        style={{
-                          width: "100%", textAlign: "left",
-                          padding: "8px 34px 8px 10px", borderRadius: 8, display: "block",
-                          background: isActive ? "var(--pri-dim)" : "transparent",
-                          border: `1px solid ${isActive ? "var(--border)" : "transparent"}`,
-                          color: isActive ? "var(--text)" : "var(--text2)",
-                          fontSize: 12, lineHeight: 1.4, transition: "all .15s",
-                          animationDelay: `${i * 0.04}s`,
-                        }}
-                        onMouseEnter={e => {
-                          if (!isActive) { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text)"; }
-                        }}
-                        onMouseLeave={e => {
-                          if (!isActive) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text2)"; }
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                          <MessageSquare size={11} style={{ marginTop: 2, flexShrink: 0, color: isActive ? "var(--pri)" : "var(--text3)" }} />
-                          <div style={{ overflow: "hidden", flex: 1 }}>
-                            <div style={{
-                              overflow: "hidden", textOverflow: "ellipsis",
-                              display: "-webkit-box", WebkitLineClamp: 2,
-                              WebkitBoxOrient: "vertical",
-                            }}>{session.title}</div>
-                            <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
-                              {session.time} · {session.messages.filter(m => m.role !== "error").length / 2 | 0} éch.
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-
-                      {/* Per-session context menu ("...") */}
-                      <div ref={isMenuOpen ? menuRef : null} style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)" }}>
-                        <button
-                          onClick={e => { e.stopPropagation(); setOpenMenuId(isMenuOpen ? null : session.id); }}
-                          style={{
-                            width: 22, height: 22, borderRadius: 5,
-                            background: isMenuOpen ? "var(--pri-dim)" : "transparent",
-                            border: "none", color: "var(--text3)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            transition: "all .12s",
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = "var(--surface)"; e.currentTarget.style.color = "var(--text2)"; }}
-                          onMouseLeave={e => { if (!isMenuOpen) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text3)"; } }}
-                        >
-                          <MoreHorizontal size={12} />
-                        </button>
-
-                        {isMenuOpen && (
-                          <div className="ctx-menu" style={{ right: 0, top: "calc(100% + 2px)" }}>
-                            <button className="ctx-item" onClick={e => { e.stopPropagation(); setOpenMenuId(null); onRename(session); }}>
-                              <Pencil size={11} /> {t.rename}
-                            </button>
-                            <button className="ctx-item danger" onClick={e => { e.stopPropagation(); setOpenMenuId(null); onDelete(session.id); }}>
-                              <Trash2 size={11} /> {t.delete}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-            }
-          </div>
-
-          {/* Global "Clear history" — preserved from v2 */}
-          {sessions.length > 0 && (
-            <div style={{ padding: "8px 12px 12px", borderTop: "1px solid var(--border2)" }}>
-              <button onClick={onClear} style={{
-                width: "100%", padding: "7px", borderRadius: "var(--radius-sm)",
-                background: "transparent", border: "1px solid rgba(239,68,68,.15)",
-                color: "rgba(239,68,68,.55)", fontSize: 11,
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                transition: "all .15s",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,.07)"; e.currentTarget.style.color = "#f87171"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "rgba(239,68,68,.55)"; }}
-              >
-                <Trash2 size={10} /> {t.clearHistory}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
 // ─── Input bar ─────────────────────────────────────────────────────
 
 /** Auto-expanding textarea with a send button. Enter sends; Shift+Enter inserts newline. */
-function InputBar({ value, onChange, onSend, disabled, t }) {
+function InputBar({ value, onChange, onSend, onStop, disabled, generating, t, enterToSend = true }) {
   function handleChange(e) {
     onChange(e.target.value);
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
   }
+
   const active = value.trim() && !disabled;
+  const isGenerating = generating;
+  const placeholder = t.inputPlaceholder ?? "Demander à FDT Agent";
+
   return (
-    <div style={{
-      background: "var(--glass)", border: "1px solid var(--border)",
-      borderRadius: 16, padding: "12px 14px",
-      display: "flex", alignItems: "flex-end", gap: 10,
-      backdropFilter: "blur(16px)", transition: "border-color .2s, box-shadow .2s",
-      boxShadow: "var(--shadow-sm)",
-    }}
-      onFocusCapture={e => { e.currentTarget.style.borderColor = "var(--pri)"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(108,76,252,.15)"; }}
-      onBlurCapture={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; }}
-    >
-      <textarea rows={1} value={value} onChange={handleChange}
-        onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
-        placeholder={t.placeholder}
-        style={{
-          flex: 1, background: "transparent", border: "none",
-          color: "var(--text)", fontSize: 14, lineHeight: 1.5,
-          overflow: "auto", maxHeight: 120, minHeight: 22,
-        }} />
-      <button disabled={!active} onClick={onSend} style={{
-        width: 38, height: 38, borderRadius: 10, border: "none",
-        background: active ? "var(--grad)" : "var(--surface)",
-        color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
-        transition: "all .2s", flexShrink: 0, opacity: active ? 1 : 0.4,
-        boxShadow: active ? "0 4px 16px rgba(108,76,252,.4)" : "none",
-      }}
-        onMouseEnter={e => { if (active) e.currentTarget.style.transform = "scale(1.06)"; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
+    <div className={`chat-input-box ${active ? "is-active" : ""} ${disabled ? "is-disabled" : ""}`}>
+      <textarea
+        rows={1}
+        value={value}
+        onChange={handleChange}
+        onKeyDown={e => {
+          if (enterToSend && e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            onSend();
+          }
+        }}
+        placeholder={placeholder}
+        className="chat-input-textarea"
+      />
+
+      <button
+        disabled={!active && !isGenerating}
+        onClick={isGenerating ? onStop : onSend}
+        className={`chat-send-button ${active || isGenerating ? "is-active" : ""} ${isGenerating ? "is-generating" : ""}`}
       >
-        <Send size={15} />
+        {isGenerating ? (<Square size={15} fill="currentColor" />) : (<ArrowUp size={18} />)}
       </button>
     </div>
   );
@@ -773,15 +414,15 @@ function InputBar({ value, onChange, onSend, disabled, t }) {
  * It owns all state: sessions, active session, UI flags, settings.
  * Rendered by App.jsx.
  */
-export default function ChatPage({ onLogout }) {
+export default function ChatPage({ onLogout, user }) {
   // ─── State ────────────────────────────────────────────────────
-  const [sessions,        setSessions]        = useState([]);
-  const [activeId,        setActiveId]        = useState(null);
+  const [sessions,        setSessions]        = usePersistentState("sessions", []);
+  const [activeId,        setActiveId]        = usePersistentState("activeId", null);
   const [input,           setInput]           = useState("");
   const [thinking,        setThinking]        = useState(false);
   const [isConvMode,      setIsConvMode]      = useState(false);
   const [thinkStep,       setThinkStep]       = useState(0);
-  const [thinkExpanded,   setThinkExpanded]   = useState(true);
+  const [thinkExpanded,   setThinkExpanded]   = useState(false);
   const [suggestions,     setSuggestions]     = useState([]);
   const [sidebarOpen,     setSidebarOpen]     = useState(true);
   const [settingsOpen,    setSettingsOpen]    = useState(false);
@@ -790,10 +431,22 @@ export default function ChatPage({ onLogout }) {
   const bottomRef = useRef(null);
   const lang      = settings.lang;
   const { t } = useTranslation(lang);
+  const abortControllerRef = useRef(null);
+  const { photoUrl: profilePhotoUrl } = useMicrosoftProfilePhoto(Boolean(user?.email));
+  const { preferences, updatePreference } = useChatPreferences();
 
   const activeSession = sessions.find(s => s.id === activeId);
   const messages = activeSession?.messages ?? [];
 
+const {
+  containerRef: messagesContainerRef,
+  isNearBottom,
+  scrollToBottom,
+} = useSmartAutoScroll([
+  messages.length,
+  thinking,
+  suggestions.length,
+]);
   // ─── Side effects ──────────────────────────────────────────────
 
   // Apply theme to <html data-theme>
@@ -851,82 +504,181 @@ export default function ChatPage({ onLogout }) {
     }
   }
 
+  function handleTogglePin(sessionId) {
+    setSessions((prev) =>
+      prev.map((session) =>
+        session.id === sessionId
+          ? { ...session, pinned: !session.pinned }
+          : session
+      )
+    );
+  }
+
   // ─── Send a message ────────────────────────────────────────────
 
   async function send(text) {
-    const q = (text ?? input).trim();
-    if (!q || thinking) return;
+  const q = (text ?? input).trim();
+  if (!q || thinking) return;
 
-    setInput("");
-    setSuggestions([]);
+  const controller = new AbortController();
+  abortControllerRef.current = controller;
 
-    const now     = new Date();
-    const timeStr = fmt(now);
-    const conv    = isConversational(q);
-    setIsConvMode(conv);
+  setInput("");
+  setSuggestions([]);
 
-    // Create a new session if none is active
-    let sessionId = activeId;
-    const sessionExists = sessions.some(s => s.id === sessionId);
-    if (!sessionId || !sessionExists) {
-      sessionId = genId();
-      const newSession = { id: sessionId, title: q, time: timeStr, messages: [] };
-      setSessions(prev => [...prev, newSession]);
-      setActiveId(sessionId);
-    }
+  const now = new Date();
+  const timeStr = fmt(now);
+  const conv = isConversational(q);
+  setIsConvMode(conv);
 
-    const userMsg = { role: "user", text: q, time: timeStr };
-    setSessions(prev => prev.map(s =>
-      s.id === sessionId ? { ...s, messages: [...s.messages, userMsg] } : s
-    ));
+  let sessionId = activeId;
+  const sessionExists = sessions.some((s) => s.id === sessionId);
 
-    setThinking(true);
-    setThinkStep(0);
-    setThinkExpanded(true);
+  if (!sessionId || !sessionExists) {
+    sessionId = genId();
+    const newSession = {
+      id: sessionId,
+      title: q,
+      time: timeStr,
+      messages: [],
+    };
 
-    // Advance thinking steps for analytical queries
-    let stepTimer;
-    if (!conv) {
-      const DELAYS = [700, 1500, 900];
-      let step = 0;
-      const advance = () => {
-        if (step < DELAYS.length) {
-          stepTimer = setTimeout(() => { step++; setThinkStep(step); advance(); }, DELAYS[step]);
-        }
-      };
-      advance();
-    }
-
-    try {
-      const answer = await callAgent(q);
-
-      if (!conv) {
-        clearTimeout(stepTimer);
-        setThinkStep(4);
-        await new Promise(r => setTimeout(r, 350));
-      }
-
-      const agentMsg = { role: "agent", text: answer, time: fmt(new Date()) };
-      setSessions(prev => prev.map(s =>
-        s.id === sessionId ? { ...s, messages: [...s.messages, agentMsg] } : s
-      ));
-
-      setThinkExpanded(false);
-
-      if (!conv) {
-        const sugs = await fetchSuggestions(q);
-        setSuggestions(sugs);
-      }
-    } catch {
-      const errMsg = { role: "error", text: t.errorMsg };
-      setSessions(prev => prev.map(s =>
-        s.id === sessionId ? { ...s, messages: [...s.messages, errMsg] } : s
-      ));
-    } finally {
-      setThinking(false);
-    }
+    setSessions((prev) => [...prev, newSession]);
+    setActiveId(sessionId);
   }
 
+  const userMsg = { role: "user", text: q, time: timeStr };
+
+  setSessions((prev) =>
+    prev.map((s) =>
+      s.id === sessionId
+        ? { ...s, messages: [...s.messages, userMsg] }
+        : s
+    )
+  );
+
+  setThinking(true);
+  setThinkStep(0);
+  setThinkExpanded(false);
+
+  let stepTimer;
+
+  if (!conv) {
+    const DELAYS = [700, 1500, 900];
+    let step = 0;
+
+    const advance = () => {
+      if (step < DELAYS.length) {
+        stepTimer = setTimeout(() => {
+          step += 1;
+          setThinkStep(step);
+          advance();
+        }, DELAYS[step]);
+      }
+    };
+
+    advance();
+  }
+
+  try {
+    const history =
+      sessions.find((s) => s.id === sessionId)?.messages ?? [];
+
+    const answer = await callAgent(
+      q,
+      sessionId,
+      history,
+      controller.signal
+    );
+
+    if (!conv) {
+      clearTimeout(stepTimer);
+      setThinkStep(4);
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
+
+    const agentMsg = {
+      role: "agent",
+      text: answer,
+      time: fmt(new Date()),
+    };
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, messages: [...s.messages, agentMsg] }
+          : s
+      )
+    );
+
+    setThinkExpanded(false);
+
+    if (!conv) {
+      const sugs = await fetchSuggestions(q);
+      setSuggestions(sugs);
+    }
+  } catch (error) {
+    if (error.name === "AbortError") {
+      clearTimeout(stepTimer);
+      return;
+    }
+
+    const errMsg = {
+      role: "error",
+      text: t.errorMsg,
+    };
+
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === sessionId
+          ? { ...s, messages: [...s.messages, errMsg] }
+          : s
+      )
+    );
+  } finally {
+    clearTimeout(stepTimer);
+    setThinking(false);
+    setThinkStep(0);
+    setThinkExpanded(false);
+    abortControllerRef.current = null;
+  }
+}
+
+  function regenerateLastAnswer() {
+  if (thinking || !activeSession) return;
+
+  const lastUserMessage = [...activeSession.messages]
+    .reverse()
+    .find((message) => message.role === "user");
+
+  if (!lastUserMessage?.text) return;
+
+  setSessions((prev) =>
+    prev.map((session) =>
+      session.id === activeId
+        ? {
+            ...session,
+            messages: session.messages.filter(
+              (_, index) => index !== session.messages.length - 1
+            ),
+          }
+        : session
+    )
+  );
+
+  send(lastUserMessage.text);
+}
+
+function stopGeneration() {
+  if (!abortControllerRef.current) return;
+
+  abortControllerRef.current.abort();
+  abortControllerRef.current = null;
+
+  setThinking(false);
+  setThinkStep(0);
+  setThinkExpanded(false);
+}
   // ─── Render ────────────────────────────────────────────────────
   return (
     <>
@@ -948,102 +700,112 @@ export default function ChatPage({ onLogout }) {
         />
       )}
 
-      <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      <div className="chat-shell" style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
 
         {/* Sidebar */}
         <Sidebar
           sessions={sessions}
           activeId={activeId}
+          collapsed={!sidebarOpen}
+          user={{ ...user, photoUrl: profilePhotoUrl,}}          
           onSelect={selectSession}
           onNewChat={newChat}
-          onClear={clearAllHistory}
           onRename={setRenamingSession}
           onDelete={handleDeleteSession}
-          collapsed={!sidebarOpen}
+          onTogglePin={handleTogglePin}
+          onSettings={() => setSettingsOpen(true)}
+          onClear={clearAllHistory}
+          onExpand={() => setSidebarOpen(true)}
+          onLogout={onLogout}
           t={t}
         />
 
         {/* Main area */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--bg)" }}>
+        <div className="chat-main" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
           {/* Header — "Connected" indicator removed in v3.0 */}
-          <header style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "12px 20px", background: "rgba(13,11,26,.85)",
-            backdropFilter: "blur(16px)", borderBottom: "1px solid var(--border2)", flexShrink: 0,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <button onClick={() => setSidebarOpen(o => !o)} style={{
-                background: "transparent", border: "none", color: "var(--text2)",
-                borderRadius: 8, padding: 6, display: "flex", alignItems: "center", transition: "color .15s",
-              }}
-                onMouseEnter={e => e.currentTarget.style.color = "var(--text)"}
-                onMouseLeave={e => e.currentTarget.style.color = "var(--text2)"}
+          <header className="chat-glass-header">
+            <div className="chat-header-backdrop" />
+            <div className="chat-header-left">
+              <button
+                type="button"
+                className="sidebar-toggle-button"
+                onClick={() => setSidebarOpen((open) => !open)}
+                aria-label="Basculer la sidebar"
               >
                 {sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
               </button>
-
-              {!sidebarOpen && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 26, height: 26, borderRadius: 7, background: "var(--grad)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>⏱</div>
-                  <span style={{ fontSize: 14, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text)" }}>
-                    Agent<span style={{ color: "var(--acc)" }}>-FDT</span>
-                  </span>
-                </div>
-              )}
             </div>
-
-            {onLogout && (
-              <button type="button" onClick={onLogout} className="logout-btn">
-                Déconnexion
-              </button>
-            )}
-            
-            {/* Settings button only (no "Connected" badge) */}
-            <button onClick={() => setSettingsOpen(true)} style={{
-              background: "var(--surface)", border: "1px solid var(--border2)",
-              borderRadius: 8, padding: "6px 10px", color: "var(--text2)",
-              display: "flex", alignItems: "center", gap: 5, fontSize: 12, transition: "all .15s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--pri)"; e.currentTarget.style.color = "var(--text)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border2)"; e.currentTarget.style.color = "var(--text2)"; }}
-            >
-              <Settings size={13} /> {t.settings}
-            </button>
+            <div className="chat-header-actions">
+              <ThemeToggle />
+            </div>
           </header>
 
           {/* Message list */}
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 0" }}>
+          <div
+            ref={messagesContainerRef}
+            className="chat-messages-scroll"
+          >
             <div style={{ maxWidth: 760, margin: "0 auto" }}>
 
               {messages.length === 0 && !thinking
-                ? <WelcomeScreen onSend={send} t={t} />
+                ?<WelcomeScreen
+                    onSend={send}
+                    input={input}
+                    onInputChange={setInput}
+                    disabled={thinking}
+                    t={t}
+                    user={user}
+                  /> 
                 : (
                   <>
                     {messages.map((m, i) => (
                       <div key={i}>
-                        {m.role === "user"  && <UserBubble  text={m.text} time={m.time} t={t} />}
-                        {m.role === "agent" && <AgentBubble text={m.text} time={m.time} t={t} />}
-                        {m.role === "error" && <ErrorBubble text={m.text} />}
+                        {m.role === "user" && (
+                          <UserMessage
+                            text={m.text}
+                            time={m.time}
+                            t={t}
+                          />
+                        )}
+
+                        {m.role === "agent" && (
+                          <AgentMessage
+                            text={m.text}
+                            time={m.time}
+                            t={t}
+                            onRegenerate={regenerateLastAnswer}
+                          />
+                        )}
+
+                        {m.role === "error" && (
+                          <ErrorMessage 
+                          text={m.text}
+                          onRetry={regenerateLastAnswer}
+                          />
+                        )}
                       </div>
                     ))}
 
-                    {thinking && (
-                      isConvMode
-                        ? <TypingIndicator t={t} />
-                        : (
-                          <div className="fade-up" style={{ paddingLeft: 42 }}>
-                            <ThinkingProcess
+                    {thinking && (isConvMode ? (<TypingMessage t={t} />) : preferences.showToolCalls ? (
+                        <div className="chat-message chat-message-agent fade-up">
+                          <div className="chat-agent-avatar">
+                            <Bot size={17} />
+                          </div>
+
+                          <div className="chat-message-content">
+                            <ToolGroup
                               step={thinkStep}
                               expanded={thinkExpanded}
-                              onToggle={() => setThinkExpanded(o => !o)}
-                              t={t}
+                              onToggle={() => setThinkExpanded((open) => !open)}
                             />
                           </div>
-                        )
+                        </div>
+                      ) : (
+                        <TypingMessage t={t} />
+                      )
                     )}
 
-                    {!thinking && <ContextSuggestions suggestions={suggestions} onSend={send} t={t} />}
                   </>
                 )
               }
@@ -1051,24 +813,54 @@ export default function ChatPage({ onLogout }) {
               <div ref={bottomRef} />
             </div>
           </div>
+          
+          {messages.length > 0 && !isNearBottom && (
+            <button
+              className="scroll-to-bottom-button"
+              onClick={scrollToBottom}
+              aria-label="Retour en bas"
+            >
+              <ChevronDown size={18} />
+            </button>
+          )}
 
           {/* Input area */}
-          <div style={{ padding: "16px 24px 20px", flexShrink: 0 }}>
-            <div style={{ maxWidth: 760, margin: "0 auto" }}>
+          {messages.length > 0 && (
+          <div className="chat-composer-zone">
+            {preferences.contextSuggestions && !thinking && (
+              <ContextSuggestions
+                suggestions={suggestions}
+                onSend={send}
+              />
+            )}
+
+            <div className="chat-composer-inner">
               <InputBar
                 value={input}
                 onChange={setInput}
                 onSend={() => send()}
+                onStop={stopGeneration}
                 disabled={thinking}
+                generating={thinking}
+                enterToSend={preferences.enterToSend}
                 t={t}
               />
-              <p style={{ fontSize: 11, color: "var(--text3)", textAlign: "center", marginTop: 8 }}>
+
+              <p className="chat-input-footer">
                 {t.footer}
               </p>
             </div>
           </div>
+          )}
         </div>
       </div>
+      <SettingsPanel
+      open={settingsOpen}
+      onClose={() => setSettingsOpen(false)}
+      user={user}
+      preferences={preferences}
+      updatePreference={updatePreference}
+    />
     </>
   );
 }
