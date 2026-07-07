@@ -1,0 +1,91 @@
+/* ------------------------------------------------------------------
+   FDT Agent Theme System
+------------------------------------------------------------------ */
+
+:root {
+  --chat-purple: #8b5cf6;
+  --chat-pink: #e537ff;
+  --chat-gradient: linear-gradient(135deg, #6c4cfc, #e537ff);
+
+  --chat-bg: #080612;
+  --chat-bg-soft: #0d0a1a;
+  --chat-surface: rgba(255, 255, 255, 0.045);
+  --chat-surface-strong: rgba(255, 255, 255, 0.075);
+  --chat-surface-hover: rgba(255, 255, 255, 0.09);
+
+  --chat-border: rgba(255, 255, 255, 0.085);
+  --chat-border-strong: rgba(167, 139, 250, 0.35);
+
+  --chat-text: #f5f3ff;
+  --chat-text-muted: rgba(245, 243, 255, 0.62);
+  --chat-text-soft: rgba(245, 243, 255, 0.42);
+
+  --chat-shadow-soft: 0 16px 42px rgba(0, 0, 0, 0.24);
+  --chat-shadow-strong: 0 24px 70px rgba(0, 0, 0, 0.38);
+}
+
+[data-theme="dark"] {
+  --chat-bg: #080612;
+  --chat-bg-soft: #0d0a1a;
+  --chat-surface: rgba(255, 255, 255, 0.045);
+  --chat-surface-strong: rgba(255, 255, 255, 0.075);
+  --chat-surface-hover: rgba(255, 255, 255, 0.09);
+
+  --chat-border: rgba(255, 255, 255, 0.085);
+  --chat-border-strong: rgba(167, 139, 250, 0.35);
+
+  --chat-text: #f5f3ff;
+  --chat-text-muted: rgba(245, 243, 255, 0.62);
+  --chat-text-soft: rgba(245, 243, 255, 0.42);
+
+  --chat-page-bg:
+    radial-gradient(circle at 24% 16%, rgba(108, 76, 252, 0.18), transparent 32%),
+    radial-gradient(circle at 78% 10%, rgba(229, 55, 255, 0.14), transparent 28%),
+    linear-gradient(180deg, #080612 0%, #05030d 100%);
+}
+
+[data-theme="light"] {
+  --chat-bg: #ffffff;
+  --chat-bg-soft: #ffffff;
+
+  --chat-surface: rgba(255, 255, 255, 0.78);
+  --chat-surface-strong: rgba(255, 255, 255, 0.94);
+  --chat-surface-hover: rgba(24, 19, 45, 0.045);
+
+  --chat-border: rgba(24, 19, 45, 0.09);
+  --chat-border-strong: rgba(108, 76, 252, 0.26);
+
+  --chat-text: #111111;
+  --chat-text-muted: rgba(17, 17, 17, 0.62);
+  --chat-text-soft: rgba(17, 17, 17, 0.42);
+
+  --chat-page-bg:
+    radial-gradient(circle at 50% 20%, rgba(139, 92, 246, 0.08), transparent 34%),
+    linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+
+  --chat-shadow-soft: 0 10px 28px rgba(0, 0, 0, 0.06);
+  --chat-shadow-strong: 0 18px 46px rgba(0, 0, 0, 0.08);
+}
+
+/* Theme toggle */
+
+.theme-icon-button {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--chat-text-muted);
+
+  transition:
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.theme-icon-button:hover {
+  color: var(--chat-text);
+  transform: translateY(-1px);
+}

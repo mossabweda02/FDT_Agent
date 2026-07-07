@@ -39,5 +39,15 @@ export default function App() {
     return <AuthPage />;
   }
 
-  return <ChatPage onLogout={handleLogout} />;
+  const activeAccount = instance.getActiveAccount() || accounts[0];
+
+  return (
+    <ChatPage
+      onLogout={handleLogout}
+      user={{
+        name: activeAccount?.name || "Utilisateur",
+        email: activeAccount?.username || "",
+      }}
+    />
+  );
 }
