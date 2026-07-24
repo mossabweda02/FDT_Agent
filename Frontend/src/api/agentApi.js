@@ -13,6 +13,7 @@
  * Endpoints utilisés :
  *  - POST /ask
  *  - POST /suggest
+ *  - POST /clarify
  */
 
 import { getAccessToken } from "../auth/getAccessToken.js";
@@ -33,6 +34,12 @@ async function getAuthHeaders() {
   };
 }
 
+/**
+ * Envoie une question à l'agent.
+ * Retourne soit une string (réponse conversationnelle classique),
+ * soit un objet { type: "questionnaire", ... } quand une clarification
+ * est nécessaire avant de continuer.
+ */
 export async function callAgent(
   question,
   conversationId = null,
@@ -56,6 +63,37 @@ export async function callAgent(
   }
 
   const d = await r.json();
+
+  if (d.type === "questionnaire") {
+    return d;
+  }
+
+  return d.answer ?? d.response ?? JSON.stringify(d);
+}
+
+/* Envoie les réponses d'un questionnaire de clarification. */
+export async function callClarify(conversationId, answers, signal = undefined) {
+  const r = await fetch(`${API_BASE_URL}/clarify`, {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    signal,
+    body: JSON.stringify({
+      conversation_id: String(conversationId ?? ""),
+      answers: Array.isArray(answers) ? answers : [],
+    }),
+  });
+
+  if (!r.ok) {
+    const errorText = await r.text();
+    throw new Error(`HTTP ${r.status}: ${errorText}`);
+  }
+
+  const d = await r.json();
+
+  if (d.type === "questionnaire") {
+    return d;
+  }
+
   return d.answer ?? d.response ?? JSON.stringify(d);
 }
 

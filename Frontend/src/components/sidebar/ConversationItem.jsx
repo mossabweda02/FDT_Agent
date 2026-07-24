@@ -49,58 +49,61 @@ export default function ConversationItem({
         </span>
       </button>
 
-      <div className="conversation-actions">
+      <div className="conversation-actions" ref={menuRef}>
         <button
           type="button"
           className={`conversation-pin-button ${session.pinned ? "is-pinned" : ""}`}
-          onClick={(e) => {
-            e.stopPropagation();
+          onClick={(event) => {
+            event.stopPropagation();
             onTogglePin(session.id);
           }}
           title={session.pinned ? "Désépingler" : "Épingler"}
         >
-          {session.pinned ? <PinOff size={14} /> : <Pin size={14} />}
+          <Pin size={14} />
         </button>
 
-        <div className="conversation-menu-zone" ref={open ? menuRef : null}>
-          <button
-            type="button"
-            className="conversation-menu-button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpen((v) => !v);
-            }}
+        <button
+          type="button"
+          className="conversation-menu-button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setOpen((current) => !current);
+          }}
+          aria-expanded={open}
+          aria-label="Options de la conversation"
+        >
+          <MoreHorizontal size={15} />
+        </button>
+
+        {open && (
+          <div
+            className="conversation-menu"
+            onClick={(event) => event.stopPropagation()}
           >
-            <MoreHorizontal size={15} />
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onRename(session);
+              }}
+            >
+              <Pencil size={14} />
+              <span>Renommer</span>
+            </button>
 
-          {open && (
-            <div className="conversation-menu">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  onRename(session);
-                }}
-              >
-                <Pencil size={13} />
-                Renommer
-              </button>
-
-              <button
-                type="button"
-                className="danger"
-                onClick={() => {
-                  setOpen(false);
-                  onDelete(session.id);
-                }}
-              >
-                <Trash2 size={13} />
-                Supprimer
-              </button>
-            </div>
-          )}
-        </div>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => {
+                setOpen(false);
+                onDelete(session.id);
+              }}
+            >
+              <Trash2 size={14} />
+              <span>Supprimer</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -31,6 +31,8 @@ import AgentMessage from "../components/chat/messages/AgentMessage";
 import UserMessage from "../components/chat/messages/UserMessage";
 import TypingMessage from "../components/chat/messages/TypingMessage";
 import ErrorMessage from "../components/chat/messages/ErrorMessage";
+import QuestionnaireMessage from "../components/chat/messages/QuestionnaireMessage";
+
 import ThemeToggle from "../components/ui/ThemeToggle";
 import SettingsPanel from "../components/settings/SettingsPanel";
 
@@ -469,6 +471,35 @@ const {
 
   const changeSetting = (k, v) => setSettings(s => ({ ...s, [k]: v }));
 
+
+/** Ajoute un message (agent, questionnaire ou erreur) à une session donnée. */
+function appendMessage(sessionId, message) {
+  setSessions((prev) =>
+    prev.map((s) =>
+      s.id === sessionId
+        ? { ...s, messages: [...s.messages, message] }
+        : s
+    )
+  );
+}
+
+/** Pousse le résultat de callAgent/callClarify dans la session sous la
+ * bonne forme (agent texte, ou questionnaire de clarification). */
+function pushAgentResult(sessionId, result) {
+  if (typeof result === "object" && result !== null && result.type === "questionnaire") {
+    appendMessage(sessionId, {
+      role: "questionnaire",
+      questionnaire: result,
+      time: fmt(new Date()),
+    });
+  } else {
+    appendMessage(sessionId, {
+      role: "agent",
+      text: result,
+      time: fmt(new Date()),
+    });
+  }
+}
   // ─── Session management ────────────────────────────────────────
 
   function newChat() {
@@ -597,23 +628,11 @@ const {
       await new Promise((resolve) => setTimeout(resolve, 350));
     }
 
-    const agentMsg = {
-      role: "agent",
-      text: answer,
-      time: fmt(new Date()),
-    };
-
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.id === sessionId
-          ? { ...s, messages: [...s.messages, agentMsg] }
-          : s
-      )
-    );
+    pushAgentResult(sessionId, answer);
 
     setThinkExpanded(false);
 
-    if (!conv) {
+    if (!conv && typeof answer === "string") {
       const sugs = await fetchSuggestions(q);
       setSuggestions(sugs);
     }
@@ -782,6 +801,15 @@ function stopGeneration() {
                           <ErrorMessage 
                           text={m.text}
                           onRetry={regenerateLastAnswer}
+                          />
+                        )}
+
+                        {m.role === "questionnaire" && (
+                          <QuestionnaireMessage
+                            questionnaire={m.questionnaire}
+                            time={m.time}
+                            t={t}
+                            onAnswered={(result) => pushAgentResult(activeId, result)}
                           />
                         )}
                       </div>
