@@ -22,6 +22,7 @@ from pydantic_ai import Agent, RunContext
 from backend.tools.functions_tool import TOOL_FUNCTIONS
 from backend.tools.sql_validator import validate_sql_query
 from backend.tools.hub_functions import HUB_FUNCTIONS
+from backend.core.auth.user_context import UserContext
 
 
 @dataclass
@@ -35,6 +36,17 @@ class AgentDeps:
     """
 
     auth_header: str | None = None
+    user_context: UserContext | None = None
+
+
+def _resource_id_from_context(ctx: RunContext[AgentDeps], explicit_resource_id: str | None = None) -> str | None:
+    """Retourne la ressource explicite ou celle de l'utilisateur connecté."""
+
+    if explicit_resource_id:
+        return explicit_resource_id
+    if ctx.deps.user_context and ctx.deps.user_context.resource_id:
+        return ctx.deps.user_context.resource_id
+    return None
 
 
 def register_tools(agent: Agent) -> None:
@@ -86,14 +98,45 @@ def register_tools(agent: Agent) -> None:
         """Retourne le mode d'authentification Hub actuel sans exposer de secrets."""
         return TOOL_FUNCTIONS["get_auth_runtime_status"]()
 
+    @agent.tool
+    def get_current_user_context(ctx: RunContext[AgentDeps]) -> str:
+        """Retourne le contexte utilisateur connecté sans exposer le token."""
+        import json
+
+        if not ctx.deps.user_context:
+            return json.dumps({"ok": False, "error": "Aucun contexte utilisateur disponible."}, ensure_ascii=False)
+        return json.dumps({"ok": True, "user": ctx.deps.user_context.to_safe_dict()}, ensure_ascii=False)
+
     # ── Outils Integration Hub (Operate) : lecture + écriture des heures (Actions) ──
 
     # ──────────── Projects ────────────
     @agent.tool
-    def hub_list_projects(ctx: RunContext[AgentDeps], limit: int = 20) -> str:
-        """Liste les projets Operate via l'Integration Hub."""
-        return HUB_FUNCTIONS["list_projects"](
+    def hub_get_resource_projects(
+        ctx: RunContext[AgentDeps],
+        resource_id: str | None = None,
+        limit: int = 50,
+        skip: int = 0,
+    ) -> str:
+        """Liste les projets associés à la ressource connectée ou fournie."""
+        resolved_resource_id = _resource_id_from_context(ctx, resource_id)
+        if not resolved_resource_id:
+            import json
+
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "resource_id manquant et impossible à résoudre "
+                        "depuis l'utilisateur connecté."
+                    ),
+                },
+                ensure_ascii=False,
+            )
+
+        return HUB_FUNCTIONS["get_resource_projects"](
+            resource_id=resolved_resource_id,
             limit=limit,
+            skip=skip,
             auth_header=ctx.deps.auth_header,
         )
 
@@ -122,28 +165,12 @@ def register_tools(agent: Agent) -> None:
             auth_header=ctx.deps.auth_header,
         )
 
-    @agent.tool
-    def hub_list_tasks(ctx: RunContext[AgentDeps], limit: int = 20) -> str:
-        """Liste les tâches Operate via l'Integration Hub."""
-        return HUB_FUNCTIONS["list_tasks"](
-            limit=limit,
-            auth_header=ctx.deps.auth_header,
-        )
-
     # ──────────── Resources ────────────
     @agent.tool
     def hub_get_resource(ctx: RunContext[AgentDeps], resource_id: str) -> str:
         """Détails d'une ressource par resourceId."""
         return HUB_FUNCTIONS["get_resource"](
             resource_id=resource_id,
-            auth_header=ctx.deps.auth_header,
-        )
-
-    @agent.tool
-    def hub_find_resource(ctx: RunContext[AgentDeps], search: str) -> str:
-        """Recherche une ressource par fragment (ex. RES-29 ou un nom)."""
-        return HUB_FUNCTIONS["find_resource"](
-            search=search,
             auth_header=ctx.deps.auth_header,
         )
 
@@ -163,10 +190,15 @@ def register_tools(agent: Agent) -> None:
         )
 
     @agent.tool
-    def hub_find_resource_by_email(ctx: RunContext[AgentDeps], email: str) -> str:
-        """Recherche une ressource par email."""
+    def hub_find_resource_by_email(
+        ctx: RunContext[AgentDeps],
+        email: str,
+        exact: bool = True,
+    ) -> str:
+        """Recherche une ressource par email, exactement par défaut."""
         return HUB_FUNCTIONS["find_resource_by_email"](
             email=email,
+            exact=exact,
             auth_header=ctx.deps.auth_header,
         )
 
@@ -175,12 +207,16 @@ def register_tools(agent: Agent) -> None:
     def hub_get_timesheet_categories(
         ctx: RunContext[AgentDeps],
         project_id: str,
-        resource_id: str,
+        resource_id: str | None = None,
     ) -> str:
         """Catégories de saisie valides pour un projet + une ressource."""
+        resolved_resource_id = _resource_id_from_context(ctx, resource_id)
+        if not resolved_resource_id:
+            import json
+            return json.dumps({"ok": False, "error": "resource_id manquant et impossible à résoudre depuis l'utilisateur connecté."}, ensure_ascii=False)
         return HUB_FUNCTIONS["get_timesheet_categories"](
             project_id=project_id,
-            resource_id=resource_id,
+            resource_id=resolved_resource_id,
             auth_header=ctx.deps.auth_header,
         )
 
@@ -188,13 +224,17 @@ def register_tools(agent: Agent) -> None:
     @agent.tool
     def hub_create_timesheet(
         ctx: RunContext[AgentDeps],
-        resource_id: str,
+        resource_id: str | None = None,
         period_start: str | None = None,
         description: str = "",
     ) -> str:
-        """Crée une feuille de temps hebdomadaire pour une ressource."""
+        """Crée une feuille de temps hebdomadaire pour la ressource connectée ou fournie."""
+        resolved_resource_id = _resource_id_from_context(ctx, resource_id)
+        if not resolved_resource_id:
+            import json
+            return json.dumps({"ok": False, "error": "resource_id manquant et impossible à résoudre depuis l'utilisateur connecté."}, ensure_ascii=False)
         return HUB_FUNCTIONS["create_timesheet"](
-            resource_id=resource_id,
+            resource_id=resolved_resource_id,
             period_start=period_start,
             description=description,
             auth_header=ctx.deps.auth_header,
@@ -209,7 +249,7 @@ def register_tools(agent: Agent) -> None:
     ) -> str:
         """Liste les feuilles de temps, avec pagination optionnelle."""
         return HUB_FUNCTIONS["list_timesheets"](
-            resource_id=resource_id,
+            resource_id=_resource_id_from_context(ctx, resource_id),
             limit=limit,
             skip=skip,
             auth_header=ctx.deps.auth_header,
@@ -224,7 +264,7 @@ def register_tools(agent: Agent) -> None:
         """Détails d'une feuille de temps par timesheetId/timesheet number."""
         return HUB_FUNCTIONS["get_timesheet"](
             timesheet_nbr=timesheet_nbr,
-            resource_id=resource_id,
+            resource_id=_resource_id_from_context(ctx, resource_id),
             auth_header=ctx.deps.auth_header,
         )
 
@@ -237,11 +277,26 @@ def register_tools(agent: Agent) -> None:
         resource_id: str | None = None,
     ) -> str:
         """Met à jour une feuille de temps existante."""
+        resolved_resource_id = _resource_id_from_context(ctx, resource_id)
+        if not resolved_resource_id:
+            import json
+
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "resource_id manquant et impossible à résoudre "
+                        "depuis l'utilisateur connecté."
+                    ),
+                },
+                ensure_ascii=False,
+            )
+
         return HUB_FUNCTIONS["update_timesheet"](
             timesheet_nbr=timesheet_nbr,
             description=description,
             period_id=period_id,
-            resource_id=resource_id,
+            resource_id=resolved_resource_id,
             auth_header=ctx.deps.auth_header,
         )
 
@@ -254,7 +309,7 @@ def register_tools(agent: Agent) -> None:
         """Supprime une feuille de temps existante."""
         return HUB_FUNCTIONS["delete_timesheet"](
             timesheet_nbr=timesheet_nbr,
-            resource_id=resource_id,
+            resource_id=_resource_id_from_context(ctx, resource_id),
             auth_header=ctx.deps.auth_header,
         )
 
@@ -285,9 +340,9 @@ def register_tools(agent: Agent) -> None:
         proj_id: str,
         activity_number: str,
         category_id: str,
-        resource_id: str,
         date: str,
         qty: float,
+        resource_id: str | None = None,
         internal_note: str = "",
         external_note: str = "",
     ) -> str:
@@ -295,12 +350,16 @@ def register_tools(agent: Agent) -> None:
 
         À n'appeler qu'après confirmation explicite de l'utilisateur.
         """
+        resolved_resource_id = _resource_id_from_context(ctx, resource_id)
+        if not resolved_resource_id:
+            import json
+            return json.dumps({"ok": False, "error": "resource_id manquant et impossible à résoudre depuis l'utilisateur connecté."}, ensure_ascii=False)
         return HUB_FUNCTIONS["create_timesheet_line"](
             timesheet_nbr=timesheet_nbr,
             proj_id=proj_id,
             activity_number=activity_number,
             category_id=category_id,
-            resource_id=resource_id,
+            resource_id=resolved_resource_id,
             date=date,
             qty=qty,
             internal_note=internal_note,
@@ -332,7 +391,7 @@ def register_tools(agent: Agent) -> None:
             proj_id=proj_id,
             activity_number=activity_number,
             category_id=category_id,
-            resource_id=resource_id,
+            resource_id=_resource_id_from_context(ctx, resource_id),
             date=date,
             qty=qty,
             internal_note=internal_note,
@@ -341,25 +400,46 @@ def register_tools(agent: Agent) -> None:
         )
 
     @agent.tool
-    def hub_delete_timesheet_line(ctx: RunContext[AgentDeps], rec_id: str) -> str:
-        """Supprime une ligne d'heures existante dans une feuille de temps.
+    def hub_delete_timesheet_line(
+        ctx: RunContext[AgentDeps],
+        rec_id: str | None = None,
+        timesheet_nbr: str | None = None,
+        proj_id: str | None = None,
+        activity_number: str | None = None,
+        date: str | None = None,
+        category_id: str | None = None,
+    ) -> str:
+        """Supprime une ligne par recId ou par sa clé métier composite.
 
         À n'appeler qu'après confirmation explicite de l'utilisateur.
         """
+        if rec_id is None and not all(
+            [timesheet_nbr, proj_id, activity_number, date]
+        ):
+            import json
+
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "Fournir rec_id, ou au minimum timesheet_nbr, "
+                        "proj_id, activity_number et date."
+                    ),
+                },
+                ensure_ascii=False,
+            )
+
         return HUB_FUNCTIONS["delete_timesheet_line"](
             rec_id=rec_id,
+            timesheet_nbr=timesheet_nbr,
+            proj_id=proj_id,
+            activity_number=activity_number,
+            date=date,
+            category_id=category_id,
             auth_header=ctx.deps.auth_header,
         )
 
     # ──────────── Livrables ────────────
-    @agent.tool
-    def hub_get_project_deliverables(ctx: RunContext[AgentDeps], proj_id: str) -> str:
-        """Liste les livrables d'un projet par projId."""
-        return HUB_FUNCTIONS["get_project_deliverables"](
-            proj_id=proj_id,
-            auth_header=ctx.deps.auth_header,
-        )
-
     @agent.tool
     def hub_get_task_deliverables(ctx: RunContext[AgentDeps], activity_number: str) -> str:
         """Liste les livrables d'une tâche par activityNumber."""
@@ -376,8 +456,23 @@ def register_tools(agent: Agent) -> None:
         open_only: bool = True,
     ) -> str:
         """Liste les périodes de saisie de temps valides pour une ressource."""
+        resolved_resource_id = _resource_id_from_context(ctx, resource_id)
+        if not resolved_resource_id:
+            import json
+
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "resource_id manquant et impossible à résoudre "
+                        "depuis l'utilisateur connecté."
+                    ),
+                },
+                ensure_ascii=False,
+            )
+
         return HUB_FUNCTIONS["get_timesheet_periods"](
-            resource_id=resource_id,
+            resource_id=resolved_resource_id,
             open_only=open_only,
             auth_header=ctx.deps.auth_header,
         )
@@ -391,6 +486,6 @@ def register_tools(agent: Agent) -> None:
         """Retourne la période de saisie de temps valide pour une date et ressource."""
         return HUB_FUNCTIONS["get_timesheet_period_by_date"](
             date=date,
-            resource_id=resource_id,
+            resource_id=_resource_id_from_context(ctx, resource_id),
             auth_header=ctx.deps.auth_header,
         )
