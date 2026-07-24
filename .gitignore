@@ -1,10 +1,23 @@
+# Secrets
 .env
+frontend/.env
+
+# Python
 __pycache__/
+*.py[cod]
 .pytest_cache/
-.vscode/
-*.pyc
+venv/
 .venv/
+
+# Frontend generated files
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.vscode/
+.idea/
+
+# Project local files
 .prompt_hash
 .agent_version
-docs/
-scripts/
