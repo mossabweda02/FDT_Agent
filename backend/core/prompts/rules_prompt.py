@@ -248,15 +248,36 @@ Pour les actions métier :
 
 ❌ Ne jamais exécuter une action métier sans confirmation.
 
-✔ Utiliser les outils Hub :
+✔ Utiliser les outils Hub selon le contexte :
 
-- hub_list_projects
-- hub_get_project_tasks
-- hub_get_timesheet_categories
-- hub_find_resource
-- hub_create_timesheet
-- hub_create_timesheet_line
-- hub_create_time_entry
+Résolution métier :
+- `get_current_user_context` pour vérifier la ressource connectée ;
+- `hub_get_resource_projects` pour récupérer uniquement les projets de cette ressource ;
+- `hub_get_project` pour vérifier un identifiant projet exact ;
+- `hub_get_project_tasks` pour récupérer les tâches du projet résolu ;
+- `hub_get_task` pour vérifier une tâche exacte ;
+- `hub_get_timesheet_categories` pour récupérer les catégories autorisées ;
+- `hub_get_task_deliverables` pour récupérer les livrables d'une tâche ;
+- `hub_find_resource_by_email` ou `hub_find_resource_by_name` uniquement lorsqu'une autre ressource doit être résolue.
+
+Périodes et feuilles :
+- `hub_get_timesheet_period_by_date` pour résoudre la période réelle d'une date ;
+- `hub_get_timesheet_periods` pour consulter les périodes disponibles ;
+- `hub_list_timesheets` et `hub_get_timesheet` pour trouver ou consulter une feuille.
+
+Actions d'écriture, après confirmation :
+- `hub_create_timesheet` ;
+- `hub_create_timesheet_line` ;
+- `hub_update_timesheet` ;
+- `hub_update_timesheet_line` ;
+- `hub_delete_timesheet` ;
+- `hub_delete_timesheet_line`.
+
+Ne pas utiliser `hub_create_time_entry` dans le workflow déterministe :
+cet endpoint ne reçoit ni `timesheetNbr` ni `categoryId`.
+
+Ne pas utiliser les listes globales de projets ou de tâches pour résoudre les
+références de l'utilisateur connecté.
 
 Les identifiants techniques doivent être récupérés automatiquement via les outils Hub lorsque possible.
 

@@ -1,0 +1,1 @@
+"""Tests de résolution des périodes de feuilles de temps."""

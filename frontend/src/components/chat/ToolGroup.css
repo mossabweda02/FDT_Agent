@@ -1,0 +1,230 @@
+/* ------------------------------------------------------------------
+   Compact Tool Calls / Reasoning block
+------------------------------------------------------------------ */
+
+.tool-group {
+  width: 100%;
+  color: rgba(245, 243, 255, 0.72);
+}
+
+.tool-group-ghost {
+  background: transparent;
+  border: none;
+}
+
+.tool-group-trigger {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: rgba(245,243,255,.58);
+  cursor: pointer;
+  transition:
+    background .18s ease,
+    color .18s ease;
+}
+
+.tool-group-trigger:hover {
+  background: rgba(255,255,255,.045);
+  color: rgba(245,243,255,.9);
+}
+
+.tool-group-trigger-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-group-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tool-group-loader,
+.tool-call-loader {
+  animation: toolSpin 0.75s linear infinite;
+}
+
+.tool-group-content {
+  overflow: hidden;
+  animation: toolExpand .18s ease;
+}
+
+[data-theme="light"] .tool-group {
+  color: rgba(17, 17, 17, 0.72);
+}
+
+[data-theme="light"] .tool-group-trigger {
+  color: rgba(17, 17, 17, 0.58);
+}
+
+[data-theme="light"] .tool-group-trigger:hover {
+  background: rgba(17, 17, 17, 0.045);
+  color: rgba(17, 17, 17, 0.88);
+}
+
+[data-theme="light"] .tool-group-title {
+  color: rgba(17, 17, 17, 0.72);
+}
+
+[data-theme="light"] .tool-call-row {
+  color: rgba(17, 17, 17, 0.58);
+}
+
+[data-theme="light"] .tool-call-row:hover {
+  background: rgba(17, 17, 17, 0.045);
+}
+
+[data-theme="light"] .tool-call-result {
+  color: rgba(17, 17, 17, 0.46);
+}
+
+@keyframes toolExpand {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tool-call-row {
+  min-height: 34px;
+  border-radius: 10px;
+  padding: 5px 8px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  color: rgba(245, 243, 255, 0.52);
+  font-size: 12px;
+  transition:
+    background 160ms ease,
+    color 160ms ease;
+}
+
+.tool-call-row:hover {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.tool-call-row.is-running {
+  color: rgba(245, 243, 255, 0.82);
+}
+
+.tool-call-row.is-success {
+  color: rgba(245, 243, 255, 0.62);
+}
+
+.tool-call-row.is-pending {
+  color: rgba(245, 243, 255, 0.32);
+}
+
+.tool-call-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-call-row.is-running .tool-call-icon {
+  color: #a78bfa;
+}
+
+.tool-call-row.is-success .tool-call-icon {
+  color: rgb(134, 239, 173);
+}
+[data-theme="light"] .tool-call-row.is-success .tool-call-icon {
+  color: rgb(6, 182, 70);
+}
+
+[data-theme="light"] .tool-call-row.is-running .tool-call-icon {
+  color: rgb(111, 79, 208);
+}
+
+.tool-call-row.is-pending .tool-call-icon {
+  color: rgba(245, 243, 255, 0.25);
+}
+
+.tool-call-main {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-call-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 118px;
+  color: currentColor;
+  font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11.5px;
+}
+
+[data-theme="light"] .tool-call-name {
+  color: rgba(17, 17, 17, 0.737);
+}
+
+.tool-call-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-result {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(245, 243, 255, 0.38);
+  font-size: 11.5px;
+}
+
+.tool-call-row.is-running .tool-call-result {
+  color: rgba(167, 139, 250, 0.82);
+}
+
+.tool-call-row.is-success .tool-call-result {
+  color: rgba(245, 243, 255, 0.45);
+}
+
+@keyframes toolSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes toolGroupIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .tool-call-row {
+    grid-template-columns: 18px minmax(0, 1fr);
+  }
+
+  .tool-call-result {
+    display: none;
+  }
+
+  .tool-call-name {
+    min-width: 100px;
+  }
+}

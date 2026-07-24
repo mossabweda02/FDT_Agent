@@ -28,10 +28,18 @@ Une future évolution remplacera ce mécanisme par :
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
+import json
 
 # from agent.fdt_agent import ask
 from backend.agent.pydantic_agent import agent as pydantic_agent
 from backend.core.training_examples import get_all_examples
+from backend.core.auth.user_context import resolve_user_context
+
+from backend.core.business.workflow_state import (
+    get_workflow_state,
+)
+from backend.core.business.workflow_manager import handle_workflow_message
+from backend.core.business.workflow_state import get_workflow_state
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Création de l'application FastAPI et configuration CORS
@@ -75,21 +83,29 @@ class SuggestRequest(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 @app.post("/ask")
 async def ask_route(q: Question, authorization: str | None = Header(None)) -> dict:
-    """Traite une question utilisateur authentifiée et retourne la réponse de l'agent.
-
-        Le Bearer token reçu depuis le frontend est propagé à l'agent afin que
-        les outils Integration Hub puissent exécuter les appels avec le contexte
-        de l'utilisateur connecté.
-    """
     auth_header = require_bearer_token(authorization)
+    user_context = resolve_user_context(auth_header)
+    state = get_workflow_state(q.conversation_id)
+
+    handled = handle_workflow_message(
+        question=q.question,
+        state=state,
+        conversation_id=q.conversation_id,
+        user_context=user_context,
+        auth_header=auth_header,
+    )
+    if handled is not None:
+        return handled
 
     answer = await pydantic_agent.ask(
         q.question,
         conversation_id=q.conversation_id,
         history=q.history,
         auth_header=auth_header,
+        user_context=user_context,
     )
-
+    if isinstance(answer, dict):
+        return answer
     return {"answer": answer}
 
 # ── Suggestion endpoint ───────────────────────────────────────────────────
