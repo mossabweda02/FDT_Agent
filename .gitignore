@@ -21,3 +21,6 @@ frontend/.vite/
 # Project local files
 .prompt_hash
 .agent_version
+
+tests/
+docs/
